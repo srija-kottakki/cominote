@@ -34,13 +34,14 @@ This build now includes the full mini-project flow described in your documents:
    pip install -r requirements.txt
    ```
 
-3. Optional upgrades for richer NLP:
+3. Optional NLP extras for richer extraction:
 
    ```bash
+   python3 -m pip install --user nltk "spacy<3.8"
    python -m spacy download en_core_web_sm
    ```
 
-   NLTK tokenizers and corpora are optional; the app includes fallbacks if they are not available.
+   `nltk` and `spacy` are optional. The app already includes fallback logic, so the core project works without them.
 
 4. Start the app:
 
