@@ -1,0 +1,17 @@
+.DS_Store
+.venv/
+venv/
+__pycache__/
+*.pyc
+generated/
+.pytest_cache/
+.mypy_cache/
+.idea/
+.vscode/
+
+# Local Firebase and deployment tooling
+.firebase/
+firebase-debug.log
+
+# OS/browser noise
+Thumbs.db

@@ -1,0 +1,40 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      ".gitignore",
+      "README.md",
+      "requirements.txt",
+      "*.py",
+      "**/__pycache__/**",
+      "generated/**",
+      "*.docx",
+      "*.png",
+      ".git/**",
+      ".github/**",
+      ".venv/**",
+      "venv/**",
+      "firebase-debug.log",
+      ".DS_Store"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public,max-age=3600"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
