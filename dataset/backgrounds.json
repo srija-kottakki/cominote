@@ -1,0 +1,274 @@
+{
+  "backgrounds": [
+    {
+      "id": "BG_ANIME_COURTYARD",
+      "name": "Sakura Courtyard",
+      "category": "school",
+      "theme_fit": ["anime"],
+      "subject_fit": ["all"],
+      "prompt_fragment": "anime academy courtyard with sakura petals and warm sunset",
+      "tags": ["anime", "school", "sakura", "academy", "sunset"],
+      "palette": {
+        "primary": "#ffe1ef",
+        "secondary": "#f5f2ff",
+        "accent": "#ff5fa2",
+        "floor": "#d9b38c"
+      }
+    },
+    {
+      "id": "BG_ANIME_ROOFTOP",
+      "name": "Rooftop Study Deck",
+      "category": "school",
+      "theme_fit": ["anime", "manga"],
+      "subject_fit": ["science", "mathematics", "literature"],
+      "prompt_fragment": "anime rooftop with city glow and dramatic clouds",
+      "tags": ["anime", "rooftop", "city", "manga", "sky"],
+      "palette": {
+        "primary": "#cce0ff",
+        "secondary": "#fff3fb",
+        "accent": "#5975ff",
+        "floor": "#7a5c49"
+      }
+    },
+    {
+      "id": "BG_ANIME_CLASSROOM",
+      "name": "Neon Study Classroom",
+      "category": "school",
+      "theme_fit": ["anime"],
+      "subject_fit": ["science", "mathematics", "literature"],
+      "prompt_fragment": "anime classroom with glowing notes and chalkboard light",
+      "tags": ["anime", "classroom", "school", "study", "neon"],
+      "palette": {
+        "primary": "#f4f0ff",
+        "secondary": "#dbe6ff",
+        "accent": "#6d4aff",
+        "floor": "#84624a"
+      }
+    },
+    {
+      "id": "BG_PIXAR_TOWN",
+      "name": "Sunny Story Town",
+      "category": "city",
+      "theme_fit": ["pixar"],
+      "subject_fit": ["all"],
+      "prompt_fragment": "soft 3d town square, playful colors, rounded buildings",
+      "tags": ["pixar", "3d", "town", "sunny", "playful"],
+      "palette": {
+        "primary": "#ffe9d6",
+        "secondary": "#fff9ef",
+        "accent": "#ff8744",
+        "floor": "#c98d5a"
+      }
+    },
+    {
+      "id": "BG_PIXAR_LAB",
+      "name": "Candy Maker Lab",
+      "category": "science",
+      "theme_fit": ["pixar"],
+      "subject_fit": ["science", "mathematics"],
+      "prompt_fragment": "playful 3d lab with bright tubes and rounded desks",
+      "tags": ["pixar", "lab", "science", "bright", "rounded"],
+      "palette": {
+        "primary": "#dff7ff",
+        "secondary": "#fff4e8",
+        "accent": "#2ec4b6",
+        "floor": "#d5a773"
+      }
+    },
+    {
+      "id": "BG_PIXAR_CLASSROOM",
+      "name": "Cozy Learning Loft",
+      "category": "school",
+      "theme_fit": ["pixar"],
+      "subject_fit": ["all"],
+      "prompt_fragment": "cozy 3d classroom with soft toys and sunbeams",
+      "tags": ["pixar", "classroom", "cozy", "soft", "learning"],
+      "palette": {
+        "primary": "#fff4e6",
+        "secondary": "#ecfff8",
+        "accent": "#5e60ce",
+        "floor": "#b9855a"
+      }
+    },
+    {
+      "id": "BG_HERO_ROOFTOP",
+      "name": "Metro Rooftop",
+      "category": "city",
+      "theme_fit": ["superhero"],
+      "subject_fit": ["all"],
+      "prompt_fragment": "city rooftop with dramatic skyline and energy lights",
+      "tags": ["superhero", "city", "rooftop", "action", "skyline"],
+      "palette": {
+        "primary": "#16213e",
+        "secondary": "#3e497a",
+        "accent": "#ea233f",
+        "floor": "#354259"
+      }
+    },
+    {
+      "id": "BG_HERO_HQ",
+      "name": "Command Center",
+      "category": "science",
+      "theme_fit": ["superhero"],
+      "subject_fit": ["science", "mathematics", "history"],
+      "prompt_fragment": "hero command room with glowing screens and tactical lights",
+      "tags": ["superhero", "command", "hq", "tech", "action"],
+      "palette": {
+        "primary": "#182848",
+        "secondary": "#4b6cb7",
+        "accent": "#ffd447",
+        "floor": "#3a455f"
+      }
+    },
+    {
+      "id": "BG_HERO_ARENA",
+      "name": "Training Arena",
+      "category": "science",
+      "theme_fit": ["superhero"],
+      "subject_fit": ["science", "mathematics", "history"],
+      "prompt_fragment": "comic training arena with sparks and bold lighting",
+      "tags": ["superhero", "arena", "training", "action", "comic"],
+      "palette": {
+        "primary": "#2b2d42",
+        "secondary": "#8d99ae",
+        "accent": "#f94144",
+        "floor": "#4a4e69"
+      }
+    },
+    {
+      "id": "BG_KIDS_CLASS",
+      "name": "Rainbow Classroom",
+      "category": "school",
+      "theme_fit": ["cartoon_kids"],
+      "subject_fit": ["all"],
+      "prompt_fragment": "bright cartoon classroom with stickers and cheerful board",
+      "tags": ["cartoon", "kids", "classroom", "rainbow", "school"],
+      "palette": {
+        "primary": "#fff7bf",
+        "secondary": "#fffdf3",
+        "accent": "#ff9f1c",
+        "floor": "#d4a373"
+      }
+    },
+    {
+      "id": "BG_KIDS_PLAY",
+      "name": "Playground Story Park",
+      "category": "nature",
+      "theme_fit": ["cartoon_kids"],
+      "subject_fit": ["all"],
+      "prompt_fragment": "cartoon playground with flags, chalk art, and playful trees",
+      "tags": ["cartoon", "kids", "park", "playground", "nature"],
+      "palette": {
+        "primary": "#d8f3dc",
+        "secondary": "#fff8d6",
+        "accent": "#2ec4b6",
+        "floor": "#9c6644"
+      }
+    },
+    {
+      "id": "BG_KIDS_CLUB",
+      "name": "Sticker Clubhouse",
+      "category": "school",
+      "theme_fit": ["cartoon_kids"],
+      "subject_fit": ["literature", "science", "history"],
+      "prompt_fragment": "kid clubhouse with doodles, posters, and warm colors",
+      "tags": ["cartoon", "kids", "clubhouse", "colorful", "friendly"],
+      "palette": {
+        "primary": "#ffe5ec",
+        "secondary": "#fff8bf",
+        "accent": "#7b2cbf",
+        "floor": "#bc8a5f"
+      }
+    },
+    {
+      "id": "BG_MANGA_ALLEY",
+      "name": "Rain Alley",
+      "category": "city",
+      "theme_fit": ["manga"],
+      "subject_fit": ["all"],
+      "prompt_fragment": "monochrome alley with rain streaks and dramatic shadows",
+      "tags": ["manga", "rain", "city", "ink", "dramatic"],
+      "palette": {
+        "primary": "#d5d5d5",
+        "secondary": "#f7f7f7",
+        "accent": "#232323",
+        "floor": "#888888"
+      }
+    },
+    {
+      "id": "BG_MANGA_CLASS",
+      "name": "Monochrome Classroom",
+      "category": "school",
+      "theme_fit": ["manga"],
+      "subject_fit": ["science", "mathematics", "literature"],
+      "prompt_fragment": "black and white classroom with sharp window light",
+      "tags": ["manga", "classroom", "monochrome", "ink", "school"],
+      "palette": {
+        "primary": "#efefef",
+        "secondary": "#d4d4d4",
+        "accent": "#1f1f1f",
+        "floor": "#9c9c9c"
+      }
+    },
+    {
+      "id": "BG_MANGA_SPEED",
+      "name": "Speed Line Void",
+      "category": "fantasy",
+      "theme_fit": ["manga"],
+      "subject_fit": ["all"],
+      "prompt_fragment": "manga speed line background with dramatic contrast",
+      "tags": ["manga", "speed lines", "dramatic", "action", "ink"],
+      "palette": {
+        "primary": "#f4f4f4",
+        "secondary": "#d0d0d0",
+        "accent": "#111111",
+        "floor": "#8c8c8c"
+      }
+    },
+    {
+      "id": "BG_FANTASY_LIBRARY",
+      "name": "Enchanted Library",
+      "category": "fantasy",
+      "theme_fit": ["fantasy"],
+      "subject_fit": ["literature", "history", "science"],
+      "prompt_fragment": "magical library with floating lights and ancient books",
+      "tags": ["fantasy", "library", "magic", "books", "enchanted"],
+      "palette": {
+        "primary": "#ede0ff",
+        "secondary": "#fff6d6",
+        "accent": "#7d4dff",
+        "floor": "#7c5a36"
+      }
+    },
+    {
+      "id": "BG_FANTASY_COURT",
+      "name": "Castle Courtyard",
+      "category": "historical",
+      "theme_fit": ["fantasy"],
+      "subject_fit": ["history", "literature", "science"],
+      "prompt_fragment": "castle courtyard with banners, stone arches, and sunlight",
+      "tags": ["fantasy", "castle", "courtyard", "knight", "magic"],
+      "palette": {
+        "primary": "#dce8ff",
+        "secondary": "#f5f1ff",
+        "accent": "#4f46e5",
+        "floor": "#8d6e63"
+      }
+    },
+    {
+      "id": "BG_FANTASY_FOREST",
+      "name": "Moonlit Forest School",
+      "category": "nature",
+      "theme_fit": ["fantasy"],
+      "subject_fit": ["science", "literature", "history"],
+      "prompt_fragment": "glowing forest path with magical plants and mist",
+      "tags": ["fantasy", "forest", "magic", "nature", "moonlit"],
+      "palette": {
+        "primary": "#d7f5f0",
+        "secondary": "#f8f2ff",
+        "accent": "#2dd4bf",
+        "floor": "#5f6f52"
+      }
+    }
+  ]
+}

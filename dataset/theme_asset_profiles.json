@@ -1,0 +1,159 @@
+{
+  "profiles": [
+    {
+      "slug": "anime",
+      "label": "Anime Theme",
+      "description": "Expressive anime students, energetic academy scenes, and manga-inspired pacing.",
+      "dataset_style": "anime_school",
+      "palette_style": "anime",
+      "layout_style": "balanced_grid",
+      "preferred_bubble": "normal",
+      "title_font_family": "condensed",
+      "body_font_family": "sans",
+      "effect_font_family": "display",
+      "ui_display_font": "\"M PLUS Rounded 1c\", \"Comic Neue\", sans-serif",
+      "ui_body_font": "\"Noto Sans JP\", \"Comic Neue\", sans-serif",
+      "font_label": "M Plus Rounded",
+      "character_summary": "anime students, manga mentors, expressive eyes",
+      "background_summary": "academy rooftops, sakura streets, neon classrooms",
+      "layout_label": "Balanced manga grid",
+      "accent": "#ff5fa2",
+      "surface": "#fff4fb"
+    },
+    {
+      "slug": "pixar",
+      "label": "Pixar Theme",
+      "description": "Rounded 3D-friendly silhouettes, colorful spaces, and warm playful energy.",
+      "dataset_style": "pixar_colorful",
+      "palette_style": "pixar",
+      "layout_style": "cinematic_grid",
+      "preferred_bubble": "pixar_round",
+      "title_font_family": "rounded",
+      "body_font_family": "rounded",
+      "effect_font_family": "rounded",
+      "ui_display_font": "\"Fredoka\", \"Comic Neue\", sans-serif",
+      "ui_body_font": "\"Fredoka\", \"Comic Neue\", sans-serif",
+      "font_label": "Fredoka",
+      "character_summary": "soft 3D mascots and playful colorful guides",
+      "background_summary": "sunny classrooms, maker labs, cozy town worlds",
+      "layout_label": "Cinematic rounded panels",
+      "accent": "#ff8744",
+      "surface": "#fff7ef"
+    },
+    {
+      "slug": "superhero",
+      "label": "Marvel / Superhero Theme",
+      "description": "Action-heavy hero poses, dramatic colors, punchy impact words, and bold comic panels.",
+      "dataset_style": "superhero_comic",
+      "palette_style": "superhero",
+      "layout_style": "action_splash",
+      "preferred_bubble": "action_burst",
+      "title_font_family": "display",
+      "body_font_family": "sans",
+      "effect_font_family": "display",
+      "ui_display_font": "\"Bebas Neue\", \"Bangers\", sans-serif",
+      "ui_body_font": "\"Comic Neue\", sans-serif",
+      "font_label": "Bebas Neue",
+      "character_summary": "heroes, captains, shields, power stances",
+      "background_summary": "rooftops, command centers, glowing city skylines",
+      "layout_label": "Action splash layout",
+      "accent": "#ea233f",
+      "surface": "#fff1ef"
+    },
+    {
+      "slug": "cartoon_kids",
+      "label": "Cartoon Kids Theme",
+      "description": "Bright school mascots, friendly doodle worlds, and playful educational comics.",
+      "dataset_style": "cute_cartoon",
+      "palette_style": "cartoon",
+      "layout_style": "balanced_grid",
+      "preferred_bubble": "pixar_round",
+      "title_font_family": "playful",
+      "body_font_family": "rounded",
+      "effect_font_family": "playful",
+      "ui_display_font": "\"Luckiest Guy\", \"Bangers\", cursive",
+      "ui_body_font": "\"Comic Neue\", sans-serif",
+      "font_label": "Luckiest Guy",
+      "character_summary": "cute school friends, mascots, cheerful helpers",
+      "background_summary": "rainbow classrooms, parks, sticker-filled clubs",
+      "layout_label": "Friendly story grid",
+      "accent": "#ffb703",
+      "surface": "#fff8dd"
+    },
+    {
+      "slug": "manga",
+      "label": "Manga Theme",
+      "description": "Monochrome storytelling, speed-line energy, dramatic faces, and crisp panel rhythm.",
+      "dataset_style": "manga_story",
+      "palette_style": "manga",
+      "layout_style": "manga_cascade",
+      "preferred_bubble": "manga_box",
+      "title_font_family": "display",
+      "body_font_family": "condensed",
+      "effect_font_family": "display",
+      "ui_display_font": "\"Bebas Neue\", sans-serif",
+      "ui_body_font": "\"Noto Sans JP\", sans-serif",
+      "font_label": "Bebas + Noto Sans JP",
+      "character_summary": "inked protagonists, stark contrasts, dramatic poses",
+      "background_summary": "rain alleys, speed lines, monochrome classrooms",
+      "layout_label": "Vertical manga cascade",
+      "accent": "#232323",
+      "surface": "#f2f2f2"
+    },
+    {
+      "slug": "fantasy",
+      "label": "Fantasy Theme",
+      "description": "Wizards, knights, enchanted schools, magical libraries, and mythic panel framing.",
+      "dataset_style": "fantasy_adventure",
+      "palette_style": "fantasy",
+      "layout_style": "cinematic_grid",
+      "preferred_bubble": "thought_bubble",
+      "title_font_family": "serif",
+      "body_font_family": "serif",
+      "effect_font_family": "display",
+      "ui_display_font": "\"Cinzel\", serif",
+      "ui_body_font": "\"Comic Neue\", sans-serif",
+      "font_label": "Cinzel",
+      "character_summary": "wizards, knights, dragons, magical school heroes",
+      "background_summary": "enchanted libraries, castles, moonlit forests",
+      "layout_label": "Cinematic fantasy frames",
+      "accent": "#7d4dff",
+      "surface": "#f8f2ff"
+    }
+  ],
+  "keyword_rules": [
+    {
+      "profile": "superhero",
+      "keywords": ["marvel", "superhero", "hero", "avengers", "action", "bond", "spy", "dc", "mission"]
+    },
+    {
+      "profile": "anime",
+      "keywords": ["anime", "academy", "school", "otaku", "shonen", "shojo", "japan", "tokyo"]
+    },
+    {
+      "profile": "manga",
+      "keywords": ["manga", "black white", "black-and-white", "ink", "panel", "speed line"]
+    },
+    {
+      "profile": "pixar",
+      "keywords": ["pixar", "3d", "toy story", "inside out", "coco", "cars", "soft", "rounded"]
+    },
+    {
+      "profile": "fantasy",
+      "keywords": ["fantasy", "wizard", "magic", "magical", "wonderland", "dragon", "knight", "ring", "lord of the rings", "journey to the west"]
+    },
+    {
+      "profile": "cartoon_kids",
+      "keywords": ["cartoon", "kids", "children", "storybook", "animal", "grandma", "jungle", "alice", "wimpy", "jataka", "stilton"]
+    }
+  ],
+  "style_rules": {
+    "anime_school": "anime",
+    "pixar_colorful": "pixar",
+    "superhero_comic": "superhero",
+    "cute_cartoon": "cartoon_kids",
+    "educational_kids": "cartoon_kids",
+    "manga_story": "manga",
+    "fantasy_adventure": "fantasy"
+  }
+}

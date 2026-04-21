@@ -17,59 +17,48 @@ const firebaseConfig = {
   appId: "1:487871751138:web:5d04f1f53b788890ab8fbb",
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+
 const COMINOTE_CONFIG = window.COMINOTE_CONFIG || {};
 const API_BASE = String(COMINOTE_CONFIG.apiBase || "").replace(/\/$/, "");
-
-const SAMPLE_NOTES = {
-  science:
-    "Photosynthesis is the process by which green plants make food. Chlorophyll in the leaves absorbs sunlight. The plant takes in carbon dioxide from the air and water from the soil. Using light energy, these raw materials are converted into glucose and oxygen. The glucose stores chemical energy for the plant, while oxygen is released into the atmosphere.",
-  history:
-    "The Industrial Revolution began in Britain in the eighteenth century. New machines and factories changed how goods were produced. Coal and steam power increased manufacturing speed. Cities grew because workers moved from villages to industrial centers. Although production increased, factory workers often faced difficult conditions and long hours.",
-  mathematics:
-    "A linear equation shows a constant rate of change. In the equation y equals mx plus c, m represents the slope and c represents the y-intercept. The slope tells us how much y changes when x increases by one unit. When we graph the equation, the line crosses the y-axis at c. Using two points on the line, we can calculate the slope and predict future values.",
-  literature:
-    "In a story, the setting shapes the mood and the characters' choices. The protagonist usually faces a conflict that drives the plot forward. Supporting characters reveal different perspectives on the main problem. As the story reaches its climax, tension rises and the central theme becomes clearer. The resolution shows how the characters changed because of the conflict.",
-};
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+const MAX_TEXT_CHARS = 25_000_000;
+const JOB_POLL_MS = 1200;
 
 const STATUS_STEPS = [
   {
-    title: "Validating your input",
-    text: "Checking file size, file type, and text length before sending the request.",
-    progress: 16,
+    title: "Checking Input",
+    text: "Verifying the selected theme and your uploaded content.",
   },
   {
-    title: "Extracting concepts",
-    text: "Ranking important ideas and detecting named entities from your notes.",
-    progress: 42,
+    title: "Reading Content",
+    text: "Extracting the main ideas from your text or PDF.",
   },
   {
-    title: "Sequencing the narrative",
-    text: "Turning the extracted concepts into a comic-style scene flow.",
-    progress: 72,
+    title: "Building Comic",
+    text: "Creating the themed comic layout and story panels.",
   },
   {
-    title: "Rendering comic panels",
-    text: "Drawing the final strip and preparing download links.",
-    progress: 96,
+    title: "Exporting PDF",
+    text: "Preparing the final comic preview and PDF download.",
   },
 ];
 
 const state = {
   currentComic: null,
-  progressTimer: null,
+  currentJobId: null,
+  jobPollTimer: null,
   user: null,
   history: [],
+  themes: [],
 };
 
 const els = {};
 
 function apiUrl(path) {
   if (!path) return API_BASE || "";
-  if (/^https?:\/\//i.test(path)) {
-    return path;
-  }
+  if (/^https?:\/\//i.test(path)) return path;
   return `${API_BASE}${path}`;
 }
 
@@ -87,8 +76,18 @@ function cacheEls() {
     "dash-email",
     "user-avatar",
     "project-title",
-    "subject-select",
-    "style-select",
+    "theme-select",
+    "theme-hint",
+    "theme-summary-card",
+    "theme-name",
+    "theme-preview",
+    "theme-visual-pill",
+    "theme-subject-pill",
+    "theme-style-pill",
+    "theme-cast-pill",
+    "theme-font-pill",
+    "theme-layout-pill",
+    "theme-size-pill",
     "notes-input",
     "notes-file",
     "char-count",
@@ -98,16 +97,13 @@ function cacheEls() {
     "status-title",
     "status-text",
     "summary-panels",
-    "summary-concepts",
     "summary-source",
+    "summary-chunks",
     "comic-preview",
     "comic-image",
     "comic-title",
     "comic-caption",
-    "download-png",
-    "download-jpeg",
-    "concept-list",
-    "scene-list",
+    "download-pdf",
     "history-list",
   ];
 
@@ -116,15 +112,15 @@ function cacheEls() {
   });
 
   els.statusSteps = Array.from(document.querySelectorAll(".status-step"));
+  els.uploadCard = document.querySelector(".upload-card");
 }
 
 function showPage(id) {
   document.querySelectorAll(".page").forEach((page) => page.classList.remove("active"));
   const target = document.getElementById(id);
-  if (target) {
-    target.classList.add("active");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+  if (!target) return;
+  target.classList.add("active");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function setAuthMessage(id, type, text) {
@@ -132,9 +128,7 @@ function setAuthMessage(id, type, text) {
   if (!node) return;
   node.textContent = text || "";
   node.className = "auth-message";
-  if (type) {
-    node.classList.add(`is-${type}`);
-  }
+  if (type) node.classList.add(`is-${type}`);
 }
 
 function setStatus(index, phase = "idle") {
@@ -146,7 +140,7 @@ function setStatus(index, phase = "idle") {
       return;
     }
 
-    if (stepIndex < index) {
+    if (phase === "done" || stepIndex < index) {
       step.classList.add("is-done");
       return;
     }
@@ -160,65 +154,241 @@ function setStatus(index, phase = "idle") {
   });
 }
 
+function stageToStep(stage, progress) {
+  if (stage === "failed") return 3;
+  if (stage === "completed") return STATUS_STEPS.length;
+  if (stage === "queued" || stage === "starting" || stage === "collecting") return 0;
+  if (stage === "reading") return progress >= 60 ? 2 : 1;
+  if (stage === "rendering") return 3;
+  return Math.min(STATUS_STEPS.length - 1, Math.floor(progress / 25));
+}
+
 function resetStatusBoard() {
-  clearInterval(state.progressTimer);
-  state.progressTimer = null;
+  clearTimeout(state.jobPollTimer);
+  state.jobPollTimer = null;
+  state.currentJobId = null;
   els["status-progress"].style.width = "0%";
-  els["status-title"].textContent = "Ready to generate";
-  els["status-text"].textContent = "Paste notes or upload a file, then click Generate Comic to begin.";
+  els["status-title"].textContent = "Ready to begin";
+  els["status-text"].textContent = "Choose a theme, add text or upload a file, and generate the comic PDF.";
   els["summary-panels"].textContent = "0";
-  els["summary-concepts"].textContent = "0";
   els["summary-source"].textContent = "Idle";
+  els["summary-chunks"].textContent = "0";
   setStatus(-1);
 }
 
-function beginProgressAnimation() {
-  clearInterval(state.progressTimer);
-  let currentStep = 0;
-  const applyStep = () => {
-    const details = STATUS_STEPS[currentStep];
-    if (!details) return;
-    els["status-title"].textContent = details.title;
-    els["status-text"].textContent = details.text;
-    els["status-progress"].style.width = `${details.progress}%`;
-    setStatus(currentStep, "active");
-    currentStep += 1;
-  };
+function applyJobProgress({ stage = "queued", progress = 0, message = "", meta = {} }) {
+  const safeProgress = Math.max(0, Math.min(Number(progress) || 0, 100));
+  const stepIndex = stageToStep(stage, safeProgress);
+  const fallbackStep =
+    STATUS_STEPS[Math.min(STATUS_STEPS.length - 1, stepIndex)] || STATUS_STEPS[0];
 
-  applyStep();
-  state.progressTimer = window.setInterval(() => {
-    if (currentStep >= STATUS_STEPS.length) {
-      clearInterval(state.progressTimer);
-      state.progressTimer = null;
-      return;
-    }
-    applyStep();
-  }, 1200);
+  els["status-progress"].style.width = `${safeProgress}%`;
+  els["status-title"].textContent = fallbackStep.title;
+
+  if (meta?.chunk_count) {
+    els["summary-chunks"].textContent = String(meta.chunk_count);
+  }
+
+  if (stage === "reading" && meta?.chunk_index && meta?.chunk_count) {
+    els["status-text"].textContent = `Processing chunk ${meta.chunk_index} of ${meta.chunk_count}.`;
+  } else {
+    els["status-text"].textContent = message || fallbackStep.text;
+  }
+
+  if (stage === "completed") {
+    setStatus(STATUS_STEPS.length, "done");
+    return;
+  }
+
+  if (stage === "failed") {
+    setStatus(stepIndex, "error");
+    return;
+  }
+
+  setStatus(stepIndex, "active");
+}
+
+function animateNumber(element, targetValue, duration = 550) {
+  if (!element) return;
+  const start = Number.parseInt(element.textContent, 10) || 0;
+  const end = Number.parseInt(targetValue, 10) || 0;
+  if (start === end) return;
+
+  const startTime = performance.now();
+  const tick = (time) => {
+    const progress = Math.min((time - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    element.textContent = String(Math.round(start + (end - start) * eased));
+    if (progress < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 function completeProgress(comic) {
-  clearInterval(state.progressTimer);
-  state.progressTimer = null;
+  clearTimeout(state.jobPollTimer);
+  state.jobPollTimer = null;
   els["status-progress"].style.width = "100%";
   els["status-title"].textContent = "Comic ready";
   els["status-text"].textContent = comic.summary;
-  els["summary-panels"].textContent = String(comic.panel_count);
-  els["summary-concepts"].textContent = String(comic.concepts.length);
+  animateNumber(els["summary-panels"], comic.panel_count);
+  animateNumber(els["summary-chunks"], comic.meta?.chunk_count || 0);
   els["summary-source"].textContent = comic.source_label;
   setStatus(STATUS_STEPS.length, "done");
 }
 
 function setStatusError(message) {
-  clearInterval(state.progressTimer);
-  state.progressTimer = null;
+  clearTimeout(state.jobPollTimer);
+  state.jobPollTimer = null;
+  hideComicSkeleton();
   els["status-progress"].style.width = "100%";
-  els["status-title"].textContent = "Generation failed";
+  els["status-title"].textContent = "Could not generate comic";
   els["status-text"].textContent = message;
   setStatus(3, "error");
 }
 
-function slugify(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+function escapeHtml(text) {
+  return String(text)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat().format(Number(value) || 0);
+}
+
+function currentTheme() {
+  const slug = els["theme-select"]?.value || "";
+  return state.themes.find((theme) => theme.slug === slug) || null;
+}
+
+function renderThemeSummary(theme = null) {
+  const card = els["theme-summary-card"];
+  if (!card) return;
+
+  if (!theme) {
+    card.classList.add("empty");
+    card.dataset.themeProfile = "default";
+    els["theme-name"].textContent = "No theme selected";
+    els["theme-preview"].textContent =
+      "Pick one theme first. Then paste text or upload a PDF, DOCX, or TXT file to generate the comic PDF.";
+    els["theme-visual-pill"].textContent = "Visual Theme: --";
+    els["theme-subject-pill"].textContent = "Topic: --";
+    els["theme-style-pill"].textContent = "Style: --";
+    els["theme-cast-pill"].textContent = "Characters: --";
+    els["theme-font-pill"].textContent = "Fonts: --";
+    els["theme-layout-pill"].textContent = "Panels: --";
+    els["theme-size-pill"].textContent = "Story Pool: --";
+    return;
+  }
+
+  card.classList.remove("empty");
+  card.dataset.themeProfile = theme.theme_profile || "default";
+  els["theme-name"].textContent = theme.title;
+  els["theme-preview"].textContent = theme.preview;
+  els["theme-visual-pill"].textContent = `Visual Theme: ${theme.theme_profile_label || "--"}`;
+  els["theme-subject-pill"].textContent = `Topic: ${theme.subject}`;
+  els["theme-style-pill"].textContent = `Style: ${theme.recommended_style_label}`;
+  els["theme-cast-pill"].textContent = `Characters: ${theme.theme_character_hint || "--"}`;
+  els["theme-font-pill"].textContent = `Fonts: ${theme.font_label || "--"}`;
+  els["theme-layout-pill"].textContent = `Panels: ${theme.layout_label || "--"}`;
+  els["theme-size-pill"].textContent = `Story Pool: ${formatNumber(theme.word_count)} words`;
+}
+
+function applyThemeVisualState(theme = null) {
+  const profile = theme?.theme_profile || "default";
+  document.body.dataset.themeProfile = profile;
+
+  const summary = els["theme-summary-card"];
+  if (summary) {
+    summary.dataset.themeProfile = profile;
+  }
+
+  const preview = els["comic-preview"];
+  if (preview) {
+    preview.dataset.themeProfile = profile;
+  }
+
+  document.body.style.setProperty(
+    "--theme-display-font",
+    theme?.ui_display_font || "\"Bangers\", cursive"
+  );
+  document.body.style.setProperty(
+    "--theme-body-font",
+    theme?.ui_body_font || "\"Comic Neue\", cursive"
+  );
+  document.body.style.setProperty("--theme-accent", theme?.theme_accent || "#f4631e");
+  document.body.style.setProperty("--theme-surface", theme?.theme_surface || "#ffffff");
+}
+
+function populateThemeSelect() {
+  const select = els["theme-select"];
+  const selectedSlug = select.value;
+
+  select.innerHTML = `
+    <option value="">Choose a theme</option>
+    ${state.themes
+      .map(
+        (theme) =>
+          `<option value="${escapeHtml(theme.slug)}">${escapeHtml(theme.title)}</option>`
+      )
+      .join("")}
+  `;
+
+  if (selectedSlug && state.themes.some((theme) => theme.slug === selectedSlug)) {
+    select.value = selectedSlug;
+  }
+
+  if (!state.themes.length) {
+    els["theme-hint"].textContent = "No themes were found in the JSON folder.";
+    return;
+  }
+
+  els["theme-hint"].textContent = `${formatNumber(state.themes.length)} themes loaded from your JSON files.`;
+}
+
+function maybeAutofillTitle(theme) {
+  const currentTitle = els["project-title"].value.trim();
+  const looksAutoGenerated =
+    !currentTitle ||
+    currentTitle.toLowerCase().endsWith("comic") ||
+    currentTitle.toLowerCase().endsWith("comic pdf") ||
+    currentTitle.toLowerCase().endsWith("comic project");
+
+  if (theme && looksAutoGenerated) {
+    els["project-title"].value = `${theme.title} Comic`;
+  }
+}
+
+function applyThemeSelection() {
+  const theme = currentTheme();
+  renderThemeSummary(theme);
+  applyThemeVisualState(theme);
+  maybeAutofillTitle(theme);
+}
+
+async function loadThemes() {
+  try {
+    const response = await fetch(apiUrl("/api/themes"));
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || "Could not load themes.");
+    }
+    state.themes = (Array.isArray(payload.themes) ? payload.themes : []).sort((a, b) =>
+      String(a.title || "").localeCompare(String(b.title || ""), undefined, { sensitivity: "base" })
+    );
+    populateThemeSelect();
+    renderThemeSummary(currentTheme());
+    applyThemeVisualState(currentTheme());
+  } catch (error) {
+    state.themes = [];
+    populateThemeSelect();
+    renderThemeSummary(null);
+    applyThemeVisualState(null);
+    els["theme-hint"].textContent = error.message || "Could not load themes.";
+  }
 }
 
 function historyKey() {
@@ -239,24 +409,24 @@ function persistHistoryEntry(comic) {
   const entry = {
     comic_id: comic.comic_id,
     title: comic.title,
-    subject: comic.subject,
-    style: comic.style,
+    theme_title: comic.meta?.theme_title || "",
     preview_url: comic.image_url,
     created_at: comic.created_at,
     summary: comic.summary,
   };
 
-  const deduped = [entry, ...state.history.filter((item) => item.comic_id !== comic.comic_id)].slice(0, 10);
-  state.history = deduped;
-  localStorage.setItem(historyKey(), JSON.stringify(deduped));
+  state.history = [entry, ...state.history.filter((item) => item.comic_id !== comic.comic_id)].slice(0, 10);
+  localStorage.setItem(historyKey(), JSON.stringify(state.history));
   renderHistory();
 }
 
 function renderHistory() {
   const container = els["history-list"];
+  if (!container) return;
+
   if (!state.history.length) {
     container.className = "history-list empty-state";
-    container.innerHTML = "<p>Your generated comics history is empty for this account.</p>";
+    container.innerHTML = "<p>Your recent comic PDFs will appear here.</p>";
     return;
   }
 
@@ -266,112 +436,109 @@ function renderHistory() {
       (item) => `
         <article class="history-entry">
           <strong>${escapeHtml(item.title)}</strong>
-          <p>${escapeHtml(item.subject)} • ${escapeHtml(item.style)} • ${new Date(item.created_at).toLocaleString()}</p>
+          <p>${escapeHtml(item.theme_title || "Theme comic")} • ${new Date(
+            item.created_at
+          ).toLocaleString()}</p>
           <small>${escapeHtml(item.summary)}</small>
-          <button class="btn btn-outline" type="button" onclick="openHistoryComic('${item.comic_id}')">Open Result</button>
+          <button class="btn-outline" type="button" onclick="openHistoryComic('${item.comic_id}')">Open Result</button>
         </article>
       `
     )
     .join("");
 }
 
-function renderConcepts(comic) {
-  const container = els["concept-list"];
-  if (!comic.concepts.length) {
-    container.className = "concept-list empty-state";
-    container.innerHTML = "<p>No concepts were extracted from this input.</p>";
-    return;
+function showComicSkeleton() {
+  const preview = els["comic-preview"];
+  if (!preview) return;
+  preview.classList.remove("empty");
+  preview.classList.add("loading-skeleton");
+  if (els["comic-image"]) {
+    els["comic-image"].style.display = "none";
   }
-
-  container.className = "concept-list";
-  container.innerHTML = comic.concepts
-    .map(
-      (concept) => `
-        <article class="concept-pill">
-          <strong>${escapeHtml(concept.label)}</strong>
-          <small>${escapeHtml(concept.kind)} • score ${Number(concept.score).toFixed(2)}</small>
-        </article>
-      `
-    )
-    .join("");
 }
 
-function renderScenes(comic) {
-  const container = els["scene-list"];
-  if (!comic.scenes.length) {
-    container.className = "scene-list empty-state";
-    container.innerHTML = "<p>No scenes were produced for this comic.</p>";
-    return;
+function hideComicSkeleton() {
+  const preview = els["comic-preview"];
+  if (!preview) return;
+  preview.classList.remove("loading-skeleton");
+  if (els["comic-image"]) {
+    els["comic-image"].style.display = "";
   }
-
-  container.className = "scene-list";
-  container.innerHTML = comic.scenes
-    .map(
-      (scene, index) => `
-        <article class="scene-card">
-          <h4>Panel ${index + 1}: ${escapeHtml(scene.title)}</h4>
-          <p>${escapeHtml(scene.dialogue)}</p>
-          <small>${escapeHtml(scene.speaker)} • ${escapeHtml(scene.background)}</small>
-        </article>
-      `
-    )
-    .join("");
 }
 
 function renderComic(comic) {
   state.currentComic = comic;
-  els["comic-preview"].classList.remove("empty");
-  els["comic-image"].src = `${apiUrl(comic.image_url)}?v=${encodeURIComponent(comic.comic_id)}`;
+  hideComicSkeleton();
+
+  const preview = els["comic-preview"];
+  preview.classList.remove("empty");
+
+  const oldImg = els["comic-image"];
+  const newImg = oldImg.cloneNode(false);
+  newImg.id = "comic-image";
+  newImg.alt = "Generated Cominote comic preview";
+  oldImg.replaceWith(newImg);
+  els["comic-image"] = newImg;
+  newImg.src = `${apiUrl(comic.image_url)}?v=${encodeURIComponent(comic.comic_id)}`;
+
+  const resultTheme =
+    state.themes.find((theme) => theme.slug === comic.meta?.theme_slug) ||
+    state.themes.find((theme) => theme.title === comic.meta?.theme_title) ||
+    (comic.meta?.theme_profile
+      ? {
+          theme_profile: comic.meta.theme_profile,
+          theme_accent: "#f4631e",
+          theme_surface: "#ffffff",
+        }
+      : null);
+  applyThemeVisualState(resultTheme);
+
   els["comic-title"].textContent = comic.title;
-  els["comic-caption"].textContent = `${comic.subject} • ${comic.style} • ${comic.summary}`;
-  els["download-png"].disabled = false;
-  els["download-jpeg"].disabled = false;
-  renderConcepts(comic);
-  renderScenes(comic);
+  const themeLabel = comic.meta?.theme_title
+    ? `${comic.meta.theme_title} • ${comic.meta?.theme_profile_label || comic.subject}`
+    : comic.meta?.theme_profile_label || comic.subject;
+  els["comic-caption"].textContent = `${themeLabel} • ${comic.panel_count} panels • PDF ready for download`;
+  els["download-pdf"].disabled = false;
 }
 
 function resetOutput() {
   state.currentComic = null;
+  hideComicSkeleton();
   els["comic-preview"].classList.add("empty");
+  applyThemeVisualState(currentTheme());
   els["comic-image"].removeAttribute("src");
-  els["comic-title"].textContent = "Waiting for your first project";
-  els["comic-caption"].textContent = "Generated comics will include a summary caption, subject, style, and timestamp.";
-  els["download-png"].disabled = true;
-  els["download-jpeg"].disabled = true;
-  els["concept-list"].className = "concept-list empty-state";
-  els["concept-list"].innerHTML = "<p>Concepts will appear here after generation.</p>";
-  els["scene-list"].className = "scene-list empty-state";
-  els["scene-list"].innerHTML = "<p>Your generated scene-by-scene breakdown will appear here.</p>";
+  els["comic-title"].textContent = "Waiting for your first comic";
+  els["comic-caption"].textContent = "Your generated comic preview and PDF download will appear here.";
+  els["download-pdf"].disabled = true;
 }
 
 function syncUser(user) {
   state.user = user;
-  if (user) {
-    const name = user.displayName || user.email || "Comic Learner";
-    const initials = name
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() || "")
-      .join("")
-      .slice(0, 2);
-
-    els["dash-username"].textContent = name;
-    els["dash-email"].textContent = user.email || "Signed in";
-    els["user-avatar"].textContent = initials || "CN";
-    loadHistory();
-  } else {
+  if (!user) {
     els["dash-username"].textContent = "Comic Learner";
     els["dash-email"].textContent = "Sign in to load your workspace";
     els["user-avatar"].textContent = "CN";
     state.history = [];
     renderHistory();
+    return;
   }
+
+  const name = user.displayName || user.email || "Comic Learner";
+  const initials = name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("")
+    .slice(0, 2);
+
+  els["dash-username"].textContent = name;
+  els["dash-email"].textContent = user.email || "Signed in";
+  els["user-avatar"].textContent = initials || "CN";
+  loadHistory();
 }
 
 function ensureAuth() {
-  if (state.user) {
-    return true;
-  }
+  if (state.user) return true;
   showPage("pg-login");
   setAuthMessage("login-msg", "error", "Please log in before generating a comic.");
   return false;
@@ -379,45 +546,63 @@ function ensureAuth() {
 
 function updateCharCount() {
   const count = els["notes-input"].value.length;
-  els["char-count"].textContent = `${count} / 5000 characters`;
+  const ratio = count / MAX_TEXT_CHARS;
+  els["char-count"].textContent = `${formatNumber(count)} / ${formatNumber(MAX_TEXT_CHARS)} characters`;
+  els["char-count"].style.color = ratio > 0.9 ? "#e63946" : ratio > 0.6 ? "#f4631e" : "#555";
+}
+
+function updateUploadCardState(hasFile) {
+  if (els.uploadCard) {
+    els.uploadCard.classList.toggle("has-file", hasFile);
+  }
 }
 
 function handleFileSelection() {
   const file = els["notes-file"].files?.[0];
   if (!file) {
+    updateUploadCardState(false);
     els["file-feedback"].textContent = "No file selected yet.";
     return;
   }
+
+  if (file.size > MAX_UPLOAD_BYTES) {
+    els["notes-file"].value = "";
+    updateUploadCardState(false);
+    els["file-feedback"].textContent = "Please choose a file smaller than 50 MB.";
+    return;
+  }
+
+  updateUploadCardState(true);
   const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
   els["file-feedback"].textContent = `${file.name} selected • ${sizeMb} MB`;
 }
 
 function clearComposer() {
   els["project-title"].value = "";
+  populateThemeSelect();
+  els["theme-select"].value = "";
+  renderThemeSummary(null);
+  applyThemeVisualState(null);
   els["notes-input"].value = "";
   els["notes-file"].value = "";
-  els["subject-select"].value = "science";
-  els["style-select"].value = "pow";
   els["file-feedback"].textContent = "No file selected yet.";
+  updateUploadCardState(false);
   updateCharCount();
   resetStatusBoard();
   resetOutput();
 }
 
-function fillSample(subject) {
-  els["subject-select"].value = subject;
-  els["project-title"].value = `${subject.charAt(0).toUpperCase() + subject.slice(1)} comic revision`;
-  els["notes-input"].value = SAMPLE_NOTES[subject] || "";
-  updateCharCount();
-}
-
-function escapeHtml(text) {
-  return String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+function mapAuthError(code) {
+  const errors = {
+    "auth/email-already-in-use": "That email is already registered.",
+    "auth/invalid-email": "Please enter a valid email address.",
+    "auth/weak-password": "Choose a stronger password with at least 6 characters.",
+    "auth/user-not-found": "No account was found for that email.",
+    "auth/wrong-password": "Incorrect password. Please try again.",
+    "auth/invalid-credential": "Incorrect email or password.",
+    "auth/too-many-requests": "Too many attempts. Please wait a moment and retry.",
+  };
+  return errors[code] || "Something went wrong. Please try again.";
 }
 
 async function doSignup() {
@@ -430,12 +615,10 @@ async function doSignup() {
     setAuthMessage("signup-msg", "error", "Please complete all signup fields.");
     return;
   }
-
   if (password !== passwordConfirm) {
     setAuthMessage("signup-msg", "error", "Passwords do not match.");
     return;
   }
-
   if (password.length < 6) {
     setAuthMessage("signup-msg", "error", "Password must be at least 6 characters long.");
     return;
@@ -471,61 +654,78 @@ async function doLogin() {
 
 async function doLogout() {
   await signOut(auth);
-  resetStatusBoard();
-  resetOutput();
+  clearComposer();
   showPage("pg-home");
 }
 
-function mapAuthError(code) {
-  const errors = {
-    "auth/email-already-in-use": "That email is already registered.",
-    "auth/invalid-email": "Please enter a valid email address.",
-    "auth/weak-password": "Choose a stronger password with at least 6 characters.",
-    "auth/user-not-found": "No account was found for that email.",
-    "auth/wrong-password": "Incorrect password. Please try again.",
-    "auth/invalid-credential": "Incorrect email or password.",
-    "auth/too-many-requests": "Too many attempts. Please wait a moment and retry.",
-  };
-  return errors[code] || "Something went wrong. Please try again.";
+function buildDefaultTitle(theme) {
+  return theme ? `${theme.title} Comic` : "Cominote Comic";
 }
 
 async function generateComic() {
-  if (!ensureAuth()) {
-    return;
-  }
+  if (!ensureAuth()) return;
 
-  const title = els["project-title"].value.trim() || `${slugify(els["subject-select"].value)}-comic-project`;
+  const theme = currentTheme();
   const text = els["notes-input"].value.trim();
   const file = els["notes-file"].files?.[0];
 
-  if (!text && !file) {
-    setStatusError("Add pasted notes or upload a .txt/.pdf file before generating.");
+  if (!theme) {
+    setStatusError("Please choose a theme before generating the comic PDF.");
     return;
   }
 
+  if (!text && !file) {
+    setStatusError("Please paste text or upload a file before generating the comic PDF.");
+    return;
+  }
+
+  if (text.length > MAX_TEXT_CHARS) {
+    setStatusError("Please keep pasted text under 25 million characters.");
+    return;
+  }
+
+  if (file && file.size > MAX_UPLOAD_BYTES) {
+    setStatusError("Please choose a file smaller than 50 MB.");
+    return;
+  }
+
+  const title = els["project-title"].value.trim() || buildDefaultTitle(theme);
+
   els["generate-btn"].disabled = true;
-  beginProgressAnimation();
+  els["generate-btn"].textContent = "GENERATING...";
+  resetStatusBoard();
+  resetOutput();
+  showComicSkeleton();
+  applyJobProgress({
+    stage: "starting",
+    progress: 8,
+    message: "Uploading your content and preparing the themed comic PDF.",
+  });
 
   try {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("text", text);
-    formData.append("subject", els["subject-select"].value);
-    formData.append("style", els["style-select"].value);
+    formData.append("theme_slug", theme.slug);
     formData.append("user_id", state.user.uid);
     formData.append("user_name", state.user.displayName || "");
-    if (file) {
-      formData.append("file", file);
-    }
+    formData.append("async", "1");
+    if (file) formData.append("file", file);
 
     const response = await fetch(apiUrl("/api/generate"), {
       method: "POST",
       body: formData,
     });
-
     const payload = await response.json();
+
     if (!response.ok) {
       throw new Error(payload.error || "Comic generation failed.");
+    }
+
+    if (response.status === 202 && payload.job_id) {
+      state.currentJobId = payload.job_id;
+      await pollJobUntilComplete(payload.job_id, payload);
+      return;
     }
 
     completeProgress(payload);
@@ -535,13 +735,49 @@ async function generateComic() {
     setStatusError(error.message || "Comic generation failed.");
   } finally {
     els["generate-btn"].disabled = false;
+    els["generate-btn"].textContent = "GENERATE COMIC PDF";
+    hideComicSkeleton();
+  }
+}
+
+async function pollJobUntilComplete(jobId, initialPayload = null) {
+  if (initialPayload) {
+    applyJobProgress({
+      stage: initialPayload.stage || "queued",
+      progress: initialPayload.progress || 4,
+      message: initialPayload.message || "Your comic is in the queue.",
+    });
+  }
+
+  while (true) {
+    const response = await fetch(apiUrl(`/api/jobs/${encodeURIComponent(jobId)}`));
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Could not load generation progress.");
+    }
+
+    applyJobProgress(payload);
+
+    if (payload.status === "completed" && payload.result) {
+      completeProgress(payload.result);
+      renderComic(payload.result);
+      persistHistoryEntry(payload.result);
+      return;
+    }
+
+    if (payload.status === "failed") {
+      throw new Error(payload.error || payload.message || "Comic generation failed.");
+    }
+
+    await new Promise((resolve) => {
+      state.jobPollTimer = window.setTimeout(resolve, JOB_POLL_MS);
+    });
   }
 }
 
 function downloadComic(format) {
-  if (!state.currentComic) {
-    return;
-  }
+  if (!state.currentComic) return;
   window.open(apiUrl(state.currentComic.downloads[format]), "_blank", "noopener");
 }
 
@@ -561,12 +797,46 @@ async function openHistoryComic(comicId) {
   }
 }
 
+function setupDropzone() {
+  const zone = els.uploadCard;
+  if (!zone) return;
+
+  const activate = () => zone.classList.add("is-dragging");
+  const deactivate = () => zone.classList.remove("is-dragging");
+
+  ["dragenter", "dragover"].forEach((eventName) => {
+    zone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      activate();
+    });
+  });
+
+  ["dragleave", "dragend", "drop"].forEach((eventName) => {
+    zone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      deactivate();
+    });
+  });
+
+  zone.addEventListener("drop", (event) => {
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    els["notes-file"].files = transfer.files;
+    handleFileSelection();
+  });
+}
+
 function setupEvents() {
   els["notes-input"].addEventListener("input", updateCharCount);
   els["notes-file"].addEventListener("change", handleFileSelection);
+  els["theme-select"].addEventListener("change", applyThemeSelection);
   updateCharCount();
   resetStatusBoard();
   resetOutput();
+  applyThemeVisualState(null);
+  setupDropzone();
 }
 
 window.showPage = showPage;
@@ -575,12 +845,12 @@ window.doLogin = doLogin;
 window.doLogout = doLogout;
 window.generateComic = generateComic;
 window.downloadComic = downloadComic;
-window.fillSample = fillSample;
 window.clearComposer = clearComposer;
 window.openHistoryComic = openHistoryComic;
 
 cacheEls();
 setupEvents();
+loadThemes();
 
 onAuthStateChanged(auth, (user) => {
   syncUser(user);

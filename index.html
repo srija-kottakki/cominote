@@ -3,454 +3,303 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cominote | Notes That Go POW!</title>
+  <title>Cominote</title>
   <meta
     name="description"
-    content="Cominote transforms study notes into comic-style learning strips with Firebase auth, Flask processing, and downloadable outputs."
+    content="Cominote turns study notes into simple comic-style learning strips."
   >
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Bebas+Neue&family=Cinzel:wght@600;700&family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;600&family=Luckiest+Guy&family=M+PLUS+Rounded+1c:wght@700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
-  <div class="backdrop-burst"></div>
-  <div class="backdrop-dots"></div>
+<body data-theme-profile="default">
 
   <div id="pg-home" class="page active">
-    <header class="site-nav">
-      <button class="logo-box" type="button" onclick="showPage('pg-home')">
-        <span>COMINOTE</span>
-      </button>
-      <nav class="nav-links">
+    <nav class="simple-nav">
+      <button class="logo-box" type="button" onclick="showPage('pg-home')"><span>COMINOTE</span></button>
+      <div class="nav-links">
         <a href="#how-it-works">How It Works</a>
-        <a href="#subjects">Subjects</a>
-        <a href="#roadmap">Workflow</a>
-        <button class="btn btn-outline" type="button" onclick="showPage('pg-login')">Log In</button>
-        <button class="btn btn-primary" type="button" onclick="showPage('pg-signup')">Start Free</button>
-      </nav>
-    </header>
+        <button type="button" class="nav-button-link" onclick="showPage('pg-login')">Login</button>
+        <button type="button" class="btn-primary small-btn" onclick="showPage('pg-signup')">Sign Up Free</button>
+      </div>
+    </nav>
 
-    <main>
-      <section class="hero-section section-shell">
-        <div class="hero-copy">
-          <p class="eyebrow">Because Learning Shouldn’t Be Boring</p>
-          <h1>Your Study Notes,<br>Now a Full Comic Mission.</h1>
-          <p class="hero-text">
-            Paste lecture notes or upload a `.txt` / `.pdf`, let Cominote extract the big ideas,
-            and turn them into comic panels you can read, review, and download.
-          </p>
-          <div class="hero-actions">
-            <button class="btn btn-primary" type="button" onclick="showPage('pg-signup')">Create Account</button>
-            <button class="btn btn-outline" type="button" onclick="showPage('pg-login')">Open Dashboard</button>
-          </div>
-          <div class="hero-stats">
-            <article class="stat-card">
-              <strong>Input</strong>
-              <span>Text + PDF notes</span>
-            </article>
-            <article class="stat-card">
-              <strong>Engine</strong>
-              <span>Flask + comic renderer</span>
-            </article>
-            <article class="stat-card">
-              <strong>Output</strong>
-              <span>Inline preview + downloads</span>
-            </article>
-          </div>
+    <section class="hero">
+      <div class="hero-text">
+        <div class="badge">NOTES TO COMICS</div>
+        <h1>YOUR NOTES,<br><span>NOW A COMIC!</span></h1>
+        <p>Paste your study notes or upload a file and Cominote turns it into a fun comic-style story that is easier to read and remember.</p>
+        <div class="hero-btns">
+          <button type="button" class="btn-primary" onclick="showPage('pg-signup')">GET STARTED</button>
+          <button type="button" class="btn-outline" onclick="showPage('pg-login')">Log In</button>
         </div>
+      </div>
 
-        <div class="hero-comic">
-          <div class="comic-stage">
-            <article class="stage-panel panel-yellow">
-              <span class="panel-tag">1</span>
-              <h3>Boring notes?</h3>
-              <p>Drop in your lesson text and let the app break it into scenes.</p>
-            </article>
-            <article class="stage-panel panel-red">
-              <span class="panel-tag">2</span>
-              <h3>POW!</h3>
-              <p>Concept extraction, narration, and panel planning happen automatically.</p>
-            </article>
-            <article class="stage-panel panel-teal">
-              <span class="panel-tag">3</span>
-              <h3>Comic Story</h3>
-              <p>Get a study-friendly visual strip with speech bubbles and captions.</p>
-            </article>
-            <article class="stage-panel panel-blue">
-              <span class="panel-tag">4</span>
-              <h3>Revision Ready</h3>
-              <p>Review key ideas faster and download the finished comic.</p>
-            </article>
+      <div class="hero-art">
+        <div class="comic-frame">
+          <div class="panel py">
+            <div class="dots"></div>
+            <div>
+              <div class="bubble" style="margin-bottom:10px;">
+                <div class="ptxt" style="font-size:.82rem;">Student pastes<br>boring notes...</div>
+              </div>
+              <div class="hero-emoji">📄 → ?</div>
+            </div>
+          </div>
+          <div class="panel pr">
+            <div class="dots"></div>
+            <div class="ptxt big">POW!</div>
+          </div>
+          <div class="panel pt">
+            <div class="dots"></div>
+            <div class="ptxt wh">COMIC<br>STORY<br>CREATED!</div>
+          </div>
+          <div class="panel pb">
+            <div class="dots"></div>
+            <div class="bubble">
+              <div class="ptxt" style="font-size:.82rem;color:var(--b);">I actually<br>understand<br>this now!</div>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="feature-band section-shell">
-        <article class="feature-card">
-          <h3>Firebase Authentication</h3>
-          <p>Secure sign up and login stays in place so the dashboard feels like a real product, not a static demo.</p>
-        </article>
-        <article class="feature-card">
-          <h3>Single-Page Workflow</h3>
-          <p>The dashboard includes the three required panels: input, processing status, and output preview.</p>
-        </article>
-        <article class="feature-card">
-          <h3>Comic Export</h3>
-          <p>Generated comics can be downloaded directly as PNG or JPEG from the output panel.</p>
-        </article>
-      </section>
+    <section class="how" id="how-it-works">
+      <h2>HOW IT WORKS</h2>
+      <div class="steps">
+        <div class="step">
+          <span class="step-num">01</span>
+          <h3>Paste Your Notes</h3>
+          <p>Copy your lesson notes or upload a `.txt` / `.pdf` / `.docx` file and drop it in.</p>
+        </div>
+        <div class="step">
+          <span class="step-num">02</span>
+          <h3>We Pick the Main Ideas</h3>
+          <p>Cominote reads your content and turns the important points into a simple story flow.</p>
+        </div>
+        <div class="step">
+          <span class="step-num">03</span>
+          <h3>Your Comic Appears</h3>
+          <p>You get a comic-style strip you can read on screen and download.</p>
+        </div>
+        <div class="step">
+          <span class="step-num">04</span>
+          <h3>Learn Faster</h3>
+          <p>Visual stories make revision feel easier, lighter, and more memorable.</p>
+        </div>
+      </div>
+    </section>
 
-      <section class="steps-section section-shell" id="how-it-works">
-        <div class="section-head">
-          <p class="eyebrow">How It Works</p>
-          <h2>From Notes to Narrative Panels</h2>
-        </div>
-        <div class="steps-grid">
-          <article class="step-card">
-            <span>01</span>
-            <h3>Paste or Upload</h3>
-            <p>Type notes directly or add a `.txt` / `.pdf` file up to 5 MB.</p>
-          </article>
-          <article class="step-card">
-            <span>02</span>
-            <h3>Extract Ideas</h3>
-            <p>Cominote cleans the content, finds concepts, and builds simple semantic links.</p>
-          </article>
-          <article class="step-card">
-            <span>03</span>
-            <h3>Build Scenes</h3>
-            <p>A guided three-act flow turns the ranked ideas into comic-friendly beats.</p>
-          </article>
-          <article class="step-card">
-            <span>04</span>
-            <h3>Render and Review</h3>
-            <p>The final strip appears inline with concepts, scenes, and download actions.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="subject-section section-shell" id="subjects">
-        <div class="section-head">
-          <p class="eyebrow">Supported Subjects</p>
-          <h2>Built for Multi-Subject Learning</h2>
-        </div>
-        <div class="subject-grid">
-          <article class="subject-card">
-            <h3>Science</h3>
-            <p>Labs, cells, forces, ecosystems, energy flow, and concept explanations.</p>
-          </article>
-          <article class="subject-card">
-            <h3>History</h3>
-            <p>Timelines, events, leaders, causes, and consequences in narrative order.</p>
-          </article>
-          <article class="subject-card">
-            <h3>Mathematics</h3>
-            <p>Definitions, formulas, worked ideas, and revision-friendly explanations.</p>
-          </article>
-          <article class="subject-card">
-            <h3>Literature</h3>
-            <p>Themes, settings, characters, and plot flow transformed into visual story beats.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="roadmap-section section-shell" id="roadmap">
-        <div class="section-head">
-          <p class="eyebrow">Inside the Product</p>
-          <h2>What the Finished Mini Project Includes</h2>
-        </div>
-        <div class="roadmap-grid">
-          <article class="roadmap-card">
-            <h3>M-01 Input Module</h3>
-            <p>Title, subject, visual style, text area, file upload, and descriptive validation.</p>
-          </article>
-          <article class="roadmap-card">
-            <h3>M-02 to M-04 Story Engine</h3>
-            <p>Lightweight preprocessing, concept ranking, relation hints, and narrative sequencing.</p>
-          </article>
-          <article class="roadmap-card">
-            <h3>M-05 Comic Renderer</h3>
-            <p>Programmatic panel generation with comic colours, avatars, speech bubbles, and captions.</p>
-          </article>
-          <article class="roadmap-card">
-            <h3>M-06 Output Module</h3>
-            <p>Preview image, download actions, recent history, and explainable scene summaries.</p>
-          </article>
-        </div>
-      </section>
-    </main>
-
-    <footer class="site-footer">
-      <p>Cominote • Notes that go POW! • Built with HTML, CSS, JavaScript, Firebase, Flask, and comic rendering.</p>
-    </footer>
+    <footer>2026. SGS.</footer>
   </div>
 
   <div id="pg-login" class="page">
-    <div class="auth-shell">
-      <button class="back-link" type="button" onclick="showPage('pg-home')">← Back to Home</button>
-      <section class="auth-card">
-        <div class="auth-brand">
-          <button class="logo-box logo-static" type="button"><span>COMINOTE</span></button>
-          <p class="eyebrow">Welcome Back</p>
-          <h2>Log in to keep building your comic notes.</h2>
+    <div class="auth-wrap">
+      <button class="back-btn" type="button" onclick="showPage('pg-home')">← Back to Home</button>
+      <div class="auth-center">
+        <div class="auth-card">
+          <div class="logo-top">
+            <div class="logo-box logo-static"><span>COMINOTE</span></div>
+          </div>
+          <h2>WELCOME BACK!</h2>
+          <p class="sub">Log in to your account</p>
+          <div class="fg">
+            <label>Email</label>
+            <input id="login-email" type="email" placeholder="you@example.com">
+          </div>
+          <div class="fg">
+            <label>Password</label>
+            <input id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()">
+          </div>
+          <button class="btn-full" type="button" onclick="doLogin()">LOG IN</button>
+          <p id="login-msg" class="auth-message"></p>
+          <div class="divider">OR</div>
+          <p class="auth-switch">No account? <button type="button" class="inline-link" onclick="showPage('pg-signup')">Sign up free</button></p>
         </div>
-
-        <label class="field">
-          <span>Email</span>
-          <input id="login-email" type="email" placeholder="you@example.com">
-        </label>
-        <label class="field">
-          <span>Password</span>
-          <input id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()">
-        </label>
-
-        <button class="btn btn-primary btn-block" type="button" onclick="doLogin()">Log In</button>
-        <p id="login-msg" class="auth-message"></p>
-        <p class="auth-switch">No account yet? <button type="button" class="text-link" onclick="showPage('pg-signup')">Create one</button></p>
-      </section>
+      </div>
     </div>
   </div>
 
   <div id="pg-signup" class="page">
-    <div class="auth-shell">
-      <button class="back-link" type="button" onclick="showPage('pg-home')">← Back to Home</button>
-      <section class="auth-card">
-        <div class="auth-brand">
-          <button class="logo-box logo-static" type="button"><span>COMINOTE</span></button>
-          <p class="eyebrow">Join the Crew</p>
-          <h2>Create your account and start turning lessons into comics.</h2>
+    <div class="auth-wrap">
+      <button class="back-btn" type="button" onclick="showPage('pg-home')">← Back to Home</button>
+      <div class="auth-center">
+        <div class="auth-card">
+          <div class="logo-top">
+            <div class="logo-box logo-static"><span>COMINOTE</span></div>
+          </div>
+          <h2>JOIN THE CREW!</h2>
+          <p class="sub">Create your free account</p>
+          <div class="fg">
+            <label>Full Name</label>
+            <input id="signup-name" type="text" placeholder="Your name">
+          </div>
+          <div class="fg">
+            <label>Email</label>
+            <input id="signup-email" type="email" placeholder="you@example.com">
+          </div>
+          <div class="fg">
+            <label>Password</label>
+            <input id="signup-pass" type="password" placeholder="Min. 6 characters">
+          </div>
+          <div class="fg">
+            <label>Confirm Password</label>
+            <input id="signup-pass2" type="password" placeholder="Repeat password" onkeydown="if(event.key==='Enter') doSignup()">
+          </div>
+          <button class="btn-full" type="button" onclick="doSignup()">CREATE ACCOUNT</button>
+          <p id="signup-msg" class="auth-message"></p>
+          <p class="auth-switch">Already have an account? <button type="button" class="inline-link" onclick="showPage('pg-login')">Log in</button></p>
         </div>
-
-        <label class="field">
-          <span>Full Name</span>
-          <input id="signup-name" type="text" placeholder="Your name">
-        </label>
-        <label class="field">
-          <span>Email</span>
-          <input id="signup-email" type="email" placeholder="you@example.com">
-        </label>
-        <label class="field">
-          <span>Password</span>
-          <input id="signup-pass" type="password" placeholder="Minimum 6 characters">
-        </label>
-        <label class="field">
-          <span>Confirm Password</span>
-          <input id="signup-pass2" type="password" placeholder="Repeat password" onkeydown="if(event.key==='Enter') doSignup()">
-        </label>
-
-        <button class="btn btn-primary btn-block" type="button" onclick="doSignup()">Create Account</button>
-        <p id="signup-msg" class="auth-message"></p>
-        <p class="auth-switch">Already registered? <button type="button" class="text-link" onclick="showPage('pg-login')">Log in</button></p>
-      </section>
+      </div>
     </div>
   </div>
 
   <div id="pg-dash" class="page">
-    <div class="dashboard-shell">
-      <header class="dashboard-nav">
+    <div class="dash-wrap">
+      <div class="dash-nav">
         <button class="logo-box" type="button" onclick="showPage('pg-home')"><span>COMINOTE</span></button>
-        <div class="dashboard-user">
-          <div class="user-pill">
-            <span class="avatar-chip" id="user-avatar">CN</span>
-            <div>
-              <strong id="dash-username">Comic Learner</strong>
-              <small id="dash-email">Sign in to load your workspace</small>
-            </div>
+        <div class="dash-user">
+          <span class="user-badge" id="user-avatar">CN</span>
+          <div class="dash-user-text">
+            <span id="dash-username">Comic Learner</span>
+            <small id="dash-email">Signed in</small>
           </div>
-          <button class="btn btn-outline" type="button" onclick="doLogout()">Log Out</button>
+          <button class="btn-outline" type="button" onclick="doLogout()">Log Out</button>
         </div>
-      </header>
+      </div>
 
-      <main class="dashboard-main">
-        <section class="dashboard-hero">
-          <div>
-            <p class="eyebrow">Creator Workspace</p>
-            <h2>Generate comics from your study material.</h2>
-            <p>
-              This dashboard follows the project docs: Input Panel, Processing Status, and Output Panel,
-              with subject selection, visual theme controls, and downloadable comic results.
-            </p>
-          </div>
-          <div class="hero-badges">
-            <span>Text / PDF input</span>
-            <span>Narrative sequencing</span>
-            <span>PNG / JPEG export</span>
-          </div>
-        </section>
+      <div class="dash-body">
+        <h2>MAKE YOUR COMIC</h2>
+        <p class="welcome">Select a theme, upload a PDF or paste text, and Cominote will turn it into a cleaner comic-style PDF with a live preview before download.</p>
 
-        <section class="workspace-grid">
-          <article class="workspace-card composer-card">
-            <div class="card-head">
-              <p class="eyebrow">Input Panel</p>
-              <h3>Build Your Comic Request</h3>
-            </div>
+        <div class="dash-grid">
+          <div class="dash-card">
+            <h3>Start Here</h3>
 
             <label class="field">
-              <span>Project Title</span>
-              <input id="project-title" type="text" maxlength="80" placeholder="Example: Photosynthesis revision">
+              <span>Title (Optional)</span>
+              <input id="project-title" type="text" maxlength="80" placeholder="Example: Avengers Machine Learning Comic">
             </label>
 
-            <div class="dual-fields">
+            <div class="theme-browser">
               <label class="field">
-                <span>Subject</span>
-                <select id="subject-select">
-                  <option value="science">Science</option>
-                  <option value="history">History</option>
-                  <option value="mathematics">Mathematics</option>
-                  <option value="literature">Literature</option>
+                <span>Select Your Favourite Theme</span>
+                <select id="theme-select">
+                  <option value="">Choose a theme</option>
                 </select>
+                <small id="theme-hint" class="field-hint">Themes are loaded from your JSON files. Pick one theme, then paste text or upload a file to generate the comic PDF.</small>
               </label>
 
-              <label class="field">
-                <span>Visual Style</span>
-                <select id="style-select">
-                  <option value="pow">Pow Burst</option>
-                  <option value="campus">Campus Chronicle</option>
-                  <option value="lab">Lab Adventure</option>
-                  <option value="classic">Classic Strip</option>
-                </select>
-              </label>
+              <article id="theme-summary-card" class="theme-summary empty" data-theme-profile="default">
+                <strong id="theme-name">No theme selected</strong>
+                <p id="theme-preview">Pick one theme first. Then paste text or upload a PDF, DOCX, or TXT file and Cominote will build the comic around that world, tone, and visual style.</p>
+                <div class="theme-pills">
+                  <span id="theme-visual-pill" class="theme-pill">Visual Theme: --</span>
+                  <span id="theme-subject-pill" class="theme-pill">Topic: --</span>
+                  <span id="theme-style-pill" class="theme-pill">Style: --</span>
+                  <span id="theme-cast-pill" class="theme-pill">Characters: --</span>
+                  <span id="theme-font-pill" class="theme-pill">Fonts: --</span>
+                  <span id="theme-layout-pill" class="theme-pill">Panels: --</span>
+                  <span id="theme-size-pill" class="theme-pill">Story Pool: --</span>
+                </div>
+              </article>
             </div>
 
             <label class="field">
-              <span>Paste Notes</span>
+              <span>Paste Text</span>
               <textarea
                 id="notes-input"
-                maxlength="5000"
-                placeholder="Paste your educational notes here. Example: Photosynthesis is the process by which green plants use sunlight, carbon dioxide, and water to produce glucose and oxygen..."
+                maxlength="25000000"
+                placeholder="Paste your text here, or leave this empty and upload a PDF / DOCX / TXT file..."
               ></textarea>
-              <small id="char-count" class="field-hint">0 / 5000 characters</small>
+              <small id="char-count" class="field-hint">0 / 25000000 characters</small>
             </label>
 
             <label class="upload-card" for="notes-file">
-              <input id="notes-file" type="file" accept=".txt,.pdf">
-              <strong>Upload `.txt` or `.pdf`</strong>
-              <span>Maximum size: 5 MB. Text input and file upload can be used together, but at least one is required.</span>
+              <input id="notes-file" type="file" accept=".txt,.pdf,.docx">
+              <strong>Upload `.pdf` / `.docx` / `.txt`</strong>
+              <span>Maximum size: 50 MB. Upload content and Cominote will convert it into a themed comic PDF.</span>
             </label>
             <p id="file-feedback" class="inline-feedback">No file selected yet.</p>
 
-            <div class="sample-strip">
-              <button class="chip-button" type="button" onclick="fillSample('science')">Science sample</button>
-              <button class="chip-button" type="button" onclick="fillSample('history')">History sample</button>
-              <button class="chip-button" type="button" onclick="fillSample('mathematics')">Math sample</button>
-              <button class="chip-button" type="button" onclick="fillSample('literature')">Literature sample</button>
-            </div>
-
             <div class="composer-actions">
-              <button id="generate-btn" class="btn btn-primary" type="button" onclick="generateComic()">Generate Comic</button>
-              <button class="btn btn-outline" type="button" onclick="clearComposer()">Clear</button>
+              <button id="generate-btn" class="btn-primary" type="button" onclick="generateComic()">GENERATE COMIC PDF</button>
+              <button class="btn-outline" type="button" onclick="clearComposer()">Clear</button>
             </div>
-          </article>
+          </div>
 
-          <article class="workspace-card status-card">
-            <div class="card-head">
-              <p class="eyebrow">Processing Status</p>
-              <h3>Track the Pipeline</h3>
-            </div>
-
-            <div class="status-meter">
-              <div id="status-progress" class="status-progress"></div>
-            </div>
-
-            <div id="status-steps" class="status-steps">
-              <article class="status-step is-idle" data-step="0">
-                <strong>Validation</strong>
-                <span>Checking input size, type, and required fields.</span>
-              </article>
-              <article class="status-step is-idle" data-step="1">
-                <strong>Extraction</strong>
-                <span>Ranking concepts and collecting key entities.</span>
-              </article>
-              <article class="status-step is-idle" data-step="2">
-                <strong>Narrative</strong>
-                <span>Mapping learning beats to a comic-friendly story arc.</span>
-              </article>
-              <article class="status-step is-idle" data-step="3">
-                <strong>Rendering</strong>
-                <span>Drawing comic panels and preparing downloads.</span>
-              </article>
-            </div>
-
-            <div class="status-note">
-              <strong id="status-title">Ready to generate</strong>
-              <p id="status-text">Paste notes or upload a file, then click Generate Comic to begin.</p>
-            </div>
-
-            <div id="summary-board" class="summary-board">
-              <article>
-                <span>Panels</span>
-                <strong id="summary-panels">0</strong>
-              </article>
-              <article>
-                <span>Concepts</span>
-                <strong id="summary-concepts">0</strong>
-              </article>
-              <article>
-                <span>Mode</span>
-                <strong id="summary-source">Idle</strong>
-              </article>
-            </div>
-          </article>
-
-          <article class="workspace-card output-card">
-            <div class="card-head">
-              <p class="eyebrow">Output Panel</p>
-              <h3>Preview the Generated Comic</h3>
-            </div>
-
-            <div id="comic-preview" class="comic-preview empty">
-              <div class="preview-placeholder">
-                <strong>Nothing generated yet</strong>
-                <p>Your comic strip will appear here once the pipeline completes.</p>
+          <div class="dash-side">
+            <div class="dash-card">
+              <h3>Creating Your Comic</h3>
+              <div class="status-meter">
+                <div id="status-progress" class="status-progress"></div>
               </div>
-              <img id="comic-image" alt="Generated Cominote comic preview">
+              <div id="status-steps" class="status-steps">
+                <article class="status-step is-idle" data-step="0">
+                  <strong>Getting Ready</strong>
+                  <span>Checking your notes and file.</span>
+                </article>
+                <article class="status-step is-idle" data-step="1">
+                  <strong>Reading Notes</strong>
+                  <span>Finding the important parts.</span>
+                </article>
+                <article class="status-step is-idle" data-step="2">
+                  <strong>Making the Story</strong>
+                  <span>Turning your notes into a comic flow.</span>
+                </article>
+                <article class="status-step is-idle" data-step="3">
+                  <strong>Finishing Up</strong>
+                  <span>Preparing your comic to view and download.</span>
+                </article>
+              </div>
+              <div class="status-note">
+                <strong id="status-title">Ready to begin</strong>
+                <p id="status-text">Choose a theme, add text or a file, and click Generate Comic PDF.</p>
+              </div>
+              <div id="summary-board" class="summary-board">
+                <article>
+                  <span>Panels</span>
+                  <strong id="summary-panels">0</strong>
+                </article>
+                <article>
+                  <span>From</span>
+                  <strong id="summary-source">Idle</strong>
+                </article>
+                <article>
+                  <span>Chunks</span>
+                  <strong id="summary-chunks">0</strong>
+                </article>
+              </div>
             </div>
 
-            <div class="output-meta">
-              <strong id="comic-title">Waiting for your first project</strong>
-              <p id="comic-caption">Generated comics will include a summary caption, subject, style, and timestamp.</p>
+            <div class="dash-card">
+              <h3>Your Comic</h3>
+              <div id="comic-preview" class="comic-preview empty">
+                <div class="preview-placeholder">
+                  <strong>No comic yet</strong>
+                  <p>Your comic will appear here after it is ready.</p>
+                </div>
+                <img id="comic-image" alt="Generated Cominote comic preview">
+              </div>
+              <div class="output-meta">
+                <strong id="comic-title">Waiting for your first comic</strong>
+                <p id="comic-caption">Your finished comic preview and PDF download will show up here.</p>
+              </div>
+              <div class="output-actions">
+                <button id="download-pdf" class="btn-primary" type="button" disabled onclick="downloadComic('pdf')">Download PDF</button>
+              </div>
             </div>
 
-            <div class="output-actions">
-              <button id="download-png" class="btn btn-primary" type="button" disabled onclick="downloadComic('png')">Download PNG</button>
-              <button id="download-jpeg" class="btn btn-outline" type="button" disabled onclick="downloadComic('jpeg')">Download JPEG</button>
+            <div class="dash-card history-card">
+              <h3>Recent Comics</h3>
+              <div id="history-list" class="history-list empty-state">
+                <p>Your recent comics will appear here.</p>
+              </div>
             </div>
-          </article>
-        </section>
-
-        <section class="insights-grid">
-          <article class="workspace-card">
-            <div class="card-head">
-              <p class="eyebrow">Concept Map</p>
-              <h3>Top Extracted Ideas</h3>
-            </div>
-            <div id="concept-list" class="concept-list empty-state">
-              <p>Concepts will appear here after generation.</p>
-            </div>
-          </article>
-
-          <article class="workspace-card">
-            <div class="card-head">
-              <p class="eyebrow">Scene Script</p>
-              <h3>Comic Narrative Flow</h3>
-            </div>
-            <div id="scene-list" class="scene-list empty-state">
-              <p>Your generated scene-by-scene breakdown will appear here.</p>
-            </div>
-          </article>
-
-          <article class="workspace-card history-card">
-            <div class="card-head">
-              <p class="eyebrow">Recent Comics</p>
-              <h3>Open Your Latest Results</h3>
-            </div>
-            <div id="history-list" class="history-list empty-state">
-              <p>Your generated comics history is empty for this account.</p>
-            </div>
-          </article>
-        </section>
-      </main>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

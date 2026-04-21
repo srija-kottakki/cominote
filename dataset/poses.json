@@ -1,0 +1,76 @@
+{
+  "poses": [
+    {
+      "name": "standing",
+      "prompt_fragment": "balanced standing pose",
+      "good_for_emotions": ["happy", "proud"],
+      "theme_fit": ["anime", "pixar", "cartoon_kids", "fantasy"]
+    },
+    {
+      "name": "explaining",
+      "prompt_fragment": "one hand explaining with confident posture",
+      "good_for_emotions": ["happy", "excited", "proud"],
+      "theme_fit": ["anime", "pixar", "cartoon_kids", "fantasy"]
+    },
+    {
+      "name": "pointing",
+      "prompt_fragment": "pointing toward the idea with emphasis",
+      "good_for_emotions": ["excited", "happy"],
+      "theme_fit": ["anime", "pixar", "superhero", "cartoon_kids"]
+    },
+    {
+      "name": "thinking",
+      "prompt_fragment": "hand to chin, reflective study pose",
+      "good_for_emotions": ["thinking"],
+      "theme_fit": ["anime", "manga", "fantasy"]
+    },
+    {
+      "name": "writing",
+      "prompt_fragment": "leaning over notes while writing",
+      "good_for_emotions": ["thinking", "happy"],
+      "theme_fit": ["anime", "manga", "cartoon_kids"]
+    },
+    {
+      "name": "reading",
+      "prompt_fragment": "holding a book or notes while reading",
+      "good_for_emotions": ["thinking", "happy"],
+      "theme_fit": ["anime", "fantasy", "cartoon_kids"]
+    },
+    {
+      "name": "celebrating",
+      "prompt_fragment": "arms up in celebration",
+      "good_for_emotions": ["excited", "proud"],
+      "theme_fit": ["pixar", "cartoon_kids", "superhero"]
+    },
+    {
+      "name": "heroic_landing",
+      "prompt_fragment": "heroic low landing with impact energy",
+      "good_for_emotions": ["excited", "proud", "surprised"],
+      "theme_fit": ["superhero"]
+    },
+    {
+      "name": "power_stance",
+      "prompt_fragment": "broad hero power stance",
+      "good_for_emotions": ["proud", "excited"],
+      "theme_fit": ["superhero", "fantasy"]
+    },
+    {
+      "name": "shocked_reaction",
+      "prompt_fragment": "lean back with dramatic surprise",
+      "good_for_emotions": ["surprised", "shocked"],
+      "theme_fit": ["anime", "manga", "cartoon_kids", "superhero"]
+    },
+    {
+      "name": "jumping",
+      "prompt_fragment": "small jump with action lines",
+      "good_for_emotions": ["surprised", "excited"],
+      "theme_fit": ["cartoon_kids", "pixar", "superhero"]
+    },
+    {
+      "name": "spell_cast",
+      "prompt_fragment": "casting a spell with one hand extended",
+      "good_for_emotions": ["excited", "thinking", "proud"],
+      "theme_fit": ["fantasy"]
+    }
+  ]
+}

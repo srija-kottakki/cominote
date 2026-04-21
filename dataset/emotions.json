@@ -1,0 +1,34 @@
+{
+  "emotions": [
+    {
+      "name": "happy",
+      "sound_effect": "YES!",
+      "prompt_fragment": "bright smile, upbeat energy"
+    },
+    {
+      "name": "thinking",
+      "sound_effect": "AHA!",
+      "prompt_fragment": "thoughtful eyes, reflective pose"
+    },
+    {
+      "name": "excited",
+      "sound_effect": "WOW!",
+      "prompt_fragment": "energetic expression, action-ready stance"
+    },
+    {
+      "name": "surprised",
+      "sound_effect": "BOOM!",
+      "prompt_fragment": "wide eyes, sudden reveal"
+    },
+    {
+      "name": "shocked",
+      "sound_effect": "ZAP!",
+      "prompt_fragment": "dramatic shock reaction"
+    },
+    {
+      "name": "proud",
+      "sound_effect": "POW!",
+      "prompt_fragment": "confident grin, triumphant finish"
+    }
+  ]
+}

@@ -1,0 +1,508 @@
+{
+  "characters": [
+    {
+      "id": "ANIME_AIKO",
+      "name": "Aiko Star",
+      "category": "student",
+      "sub_type": "anime_learner",
+      "source": "dataset",
+      "theme_fit": ["anime"],
+      "subject_fit": ["science", "literature", "mathematics"],
+      "image_prompt": "anime student girl, expressive eyes, school blazer, upbeat manga pose",
+      "tags": ["anime", "student", "expressive", "school", "manga"],
+      "palette": {
+        "hair": "#2d2946",
+        "skin": "#f3c7a4",
+        "costume_primary": "#4f6dff",
+        "costume_accent": "#ff5fa2",
+        "eye": "#356dff"
+      },
+      "costume": {
+        "top": "academy blazer",
+        "bottom": "pleated skirt",
+        "accessory": "star pin",
+        "shoes": "school shoes"
+      }
+    },
+    {
+      "id": "ANIME_REN",
+      "name": "Ren Blaze",
+      "category": "student",
+      "sub_type": "anime_learner",
+      "source": "dataset",
+      "theme_fit": ["anime"],
+      "subject_fit": ["science", "history", "mathematics"],
+      "image_prompt": "anime boy hero, sharp hair, energetic stance, school uniform",
+      "tags": ["anime", "student", "heroic", "manga", "academy"],
+      "palette": {
+        "hair": "#1f1f2c",
+        "skin": "#edc39b",
+        "costume_primary": "#1d8cf8",
+        "costume_accent": "#f7b32b",
+        "eye": "#2c7ef5"
+      },
+      "costume": {
+        "top": "academy jacket",
+        "bottom": "school pants",
+        "accessory": "energy wristband",
+        "shoes": "trainers"
+      }
+    },
+    {
+      "id": "ANIME_SORA",
+      "name": "Sensei Sora",
+      "category": "teacher",
+      "sub_type": "anime_mentor",
+      "source": "dataset",
+      "theme_fit": ["anime"],
+      "subject_fit": ["science", "history", "literature"],
+      "image_prompt": "anime teacher, calm smile, mentor pose, manga style line art",
+      "tags": ["anime", "teacher", "mentor", "manga", "guide"],
+      "palette": {
+        "hair": "#4d3b2f",
+        "skin": "#f0c7a7",
+        "costume_primary": "#6b5cff",
+        "costume_accent": "#8fd3ff",
+        "eye": "#5c68ff"
+      },
+      "costume": {
+        "top": "long academy coat",
+        "bottom": "teacher slacks",
+        "accessory": "lesson tablet",
+        "shoes": "formal shoes"
+      }
+    },
+    {
+      "id": "PIXAR_POPPY",
+      "name": "Poppy Spark",
+      "category": "student",
+      "sub_type": "pixar_student",
+      "source": "dataset",
+      "theme_fit": ["pixar"],
+      "subject_fit": ["science", "mathematics", "literature"],
+      "image_prompt": "cute 3d student, rounded features, playful grin, colorful outfit",
+      "tags": ["pixar", "3d", "rounded", "cute", "student"],
+      "palette": {
+        "hair": "#7b4f2c",
+        "skin": "#f4c59d",
+        "costume_primary": "#ff8744",
+        "costume_accent": "#4cc9f0",
+        "eye": "#4f86ff"
+      },
+      "costume": {
+        "top": "soft hoodie",
+        "bottom": "playful overalls",
+        "accessory": "colorful satchel",
+        "shoes": "chunky sneakers"
+      }
+    },
+    {
+      "id": "PIXAR_MILO",
+      "name": "Milo Bloom",
+      "category": "student",
+      "sub_type": "pixar_student",
+      "source": "dataset",
+      "theme_fit": ["pixar"],
+      "subject_fit": ["history", "mathematics", "science"],
+      "image_prompt": "3d boy character, soft cheeks, bright jacket, hopeful expression",
+      "tags": ["pixar", "soft", "student", "friendly", "colorful"],
+      "palette": {
+        "hair": "#4e3622",
+        "skin": "#efc298",
+        "costume_primary": "#00b894",
+        "costume_accent": "#ffd166",
+        "eye": "#39a0ed"
+      },
+      "costume": {
+        "top": "rounded varsity jacket",
+        "bottom": "casual pants",
+        "accessory": "bright backpack",
+        "shoes": "soft trainers"
+      }
+    },
+    {
+      "id": "PIXAR_LUMI",
+      "name": "Coach Lumi",
+      "category": "teacher",
+      "sub_type": "pixar_mentor",
+      "source": "dataset",
+      "theme_fit": ["pixar"],
+      "subject_fit": ["science", "history", "literature"],
+      "image_prompt": "friendly 3d mentor, warm smile, rounded silhouette, storybook lighting",
+      "tags": ["pixar", "teacher", "mentor", "warm", "rounded"],
+      "palette": {
+        "hair": "#523927",
+        "skin": "#f1caa5",
+        "costume_primary": "#5e60ce",
+        "costume_accent": "#ff9f1c",
+        "eye": "#5c7cfa"
+      },
+      "costume": {
+        "top": "soft cardigan",
+        "bottom": "comfy slacks",
+        "accessory": "glow pen",
+        "shoes": "boots"
+      }
+    },
+    {
+      "id": "HERO_ATLAS",
+      "name": "Atlas Bolt",
+      "category": "student",
+      "sub_type": "hero_lead",
+      "source": "dataset",
+      "theme_fit": ["superhero"],
+      "subject_fit": ["science", "history", "mathematics"],
+      "image_prompt": "superhero teen, bold jawline, action pose, comic book suit",
+      "tags": ["superhero", "hero", "action", "bold", "student"],
+      "palette": {
+        "hair": "#1d1d24",
+        "skin": "#efc098",
+        "costume_primary": "#ea233f",
+        "costume_accent": "#ffd447",
+        "eye": "#57b5ff"
+      },
+      "costume": {
+        "top": "armored hero suit",
+        "bottom": "hero leggings",
+        "accessory": "gauntlet",
+        "shoes": "power boots"
+      }
+    },
+    {
+      "id": "HERO_NOVA",
+      "name": "Nova Shield",
+      "category": "subject_expert",
+      "sub_type": "hero_mentor",
+      "source": "dataset",
+      "theme_fit": ["superhero"],
+      "subject_fit": ["science", "history", "literature"],
+      "image_prompt": "superhero heroine, determined eyes, cape, dynamic comic splash pose",
+      "tags": ["superhero", "heroine", "cape", "mentor", "action"],
+      "palette": {
+        "hair": "#422f51",
+        "skin": "#f0c6a3",
+        "costume_primary": "#2155ff",
+        "costume_accent": "#f94144",
+        "eye": "#2c7ef5"
+      },
+      "costume": {
+        "top": "hero jacket",
+        "bottom": "battle suit",
+        "accessory": "energy shield",
+        "shoes": "combat boots"
+      }
+    },
+    {
+      "id": "HERO_VECTOR",
+      "name": "Captain Vector",
+      "category": "teacher",
+      "sub_type": "hero_teacher",
+      "source": "dataset",
+      "theme_fit": ["superhero"],
+      "subject_fit": ["mathematics", "science", "history"],
+      "image_prompt": "captain hero mentor, broad shoulders, action comic lines, leadership pose",
+      "tags": ["superhero", "captain", "teacher", "leader", "muscular"],
+      "palette": {
+        "hair": "#30251d",
+        "skin": "#ecc19a",
+        "costume_primary": "#c1121f",
+        "costume_accent": "#003049",
+        "eye": "#ffb703"
+      },
+      "costume": {
+        "top": "captain chest armor",
+        "bottom": "hero pants",
+        "accessory": "command cape",
+        "shoes": "combat boots"
+      }
+    },
+    {
+      "id": "KIDS_COCO",
+      "name": "Coco Scribble",
+      "category": "student",
+      "sub_type": "cartoon_kid",
+      "source": "dataset",
+      "theme_fit": ["cartoon_kids"],
+      "subject_fit": ["literature", "science", "history"],
+      "image_prompt": "cute cartoon school girl, oversized smile, sticker colors, kid comic style",
+      "tags": ["cartoon", "kids", "cute", "school", "mascot-friendly"],
+      "palette": {
+        "hair": "#6e4f30",
+        "skin": "#f2c59f",
+        "costume_primary": "#ffb703",
+        "costume_accent": "#fb5607",
+        "eye": "#4d8df5"
+      },
+      "costume": {
+        "top": "bright tee",
+        "bottom": "play skirt",
+        "accessory": "sticker notebook",
+        "shoes": "sneakers"
+      }
+    },
+    {
+      "id": "KIDS_FINN",
+      "name": "Finn Doodle",
+      "category": "student",
+      "sub_type": "cartoon_kid",
+      "source": "dataset",
+      "theme_fit": ["cartoon_kids"],
+      "subject_fit": ["mathematics", "science", "literature"],
+      "image_prompt": "cartoon kid boy, cheerful pose, chunky outlines, colorful backpack",
+      "tags": ["cartoon", "kid", "playful", "school", "bright"],
+      "palette": {
+        "hair": "#47311f",
+        "skin": "#efc39b",
+        "costume_primary": "#00c2a8",
+        "costume_accent": "#ff6b6b",
+        "eye": "#2c7ef5"
+      },
+      "costume": {
+        "top": "striped hoodie",
+        "bottom": "shorts",
+        "accessory": "crayon pouch",
+        "shoes": "velcro shoes"
+      }
+    },
+    {
+      "id": "KIDS_SUNNY",
+      "name": "Miss Sunny",
+      "category": "teacher",
+      "sub_type": "cartoon_teacher",
+      "source": "dataset",
+      "theme_fit": ["cartoon_kids"],
+      "subject_fit": ["science", "history", "literature"],
+      "image_prompt": "cartoon teacher, warm smile, playful classroom pose, friendly linework",
+      "tags": ["cartoon", "teacher", "friendly", "classroom", "playful"],
+      "palette": {
+        "hair": "#5b3d2a",
+        "skin": "#f1caa5",
+        "costume_primary": "#7b2cbf",
+        "costume_accent": "#ffca3a",
+        "eye": "#5c7cfa"
+      },
+      "costume": {
+        "top": "rainbow cardigan",
+        "bottom": "teacher skirt",
+        "accessory": "star pointer",
+        "shoes": "comfy flats"
+      }
+    },
+    {
+      "id": "MANGA_REI",
+      "name": "Rei Ink",
+      "category": "student",
+      "sub_type": "manga_lead",
+      "source": "dataset",
+      "theme_fit": ["manga"],
+      "subject_fit": ["history", "literature", "science"],
+      "image_prompt": "manga protagonist, sharp bangs, dramatic black white panel pose",
+      "tags": ["manga", "ink", "dramatic", "student", "monochrome"],
+      "palette": {
+        "hair": "#171717",
+        "skin": "#e7dccf",
+        "costume_primary": "#2c2c2c",
+        "costume_accent": "#8c8c8c",
+        "eye": "#202124"
+      },
+      "costume": {
+        "top": "ink blazer",
+        "bottom": "dark slacks",
+        "accessory": "speed-line scarf",
+        "shoes": "boots"
+      }
+    },
+    {
+      "id": "MANGA_KAORU",
+      "name": "Kaoru Shade",
+      "category": "student",
+      "sub_type": "manga_lead",
+      "source": "dataset",
+      "theme_fit": ["manga"],
+      "subject_fit": ["mathematics", "history", "literature"],
+      "image_prompt": "manga heroine, dramatic expression, monochrome uniform, speed line stance",
+      "tags": ["manga", "dramatic", "ink", "student", "expression"],
+      "palette": {
+        "hair": "#242424",
+        "skin": "#eadfcf",
+        "costume_primary": "#505050",
+        "costume_accent": "#b6b6b6",
+        "eye": "#1f1f1f"
+      },
+      "costume": {
+        "top": "dark sailor top",
+        "bottom": "pleated skirt",
+        "accessory": "ink ribbon",
+        "shoes": "school loafers"
+      }
+    },
+    {
+      "id": "MANGA_MASTER",
+      "name": "Master Panel",
+      "category": "teacher",
+      "sub_type": "manga_mentor",
+      "source": "dataset",
+      "theme_fit": ["manga"],
+      "subject_fit": ["history", "literature", "science"],
+      "image_prompt": "manga mentor, long coat, dramatic side profile, monochrome comic style",
+      "tags": ["manga", "teacher", "mentor", "dramatic", "ink"],
+      "palette": {
+        "hair": "#2c2c2c",
+        "skin": "#e2d4c6",
+        "costume_primary": "#373737",
+        "costume_accent": "#9f9f9f",
+        "eye": "#111111"
+      },
+      "costume": {
+        "top": "long monochrome coat",
+        "bottom": "dark trousers",
+        "accessory": "brush pen",
+        "shoes": "boots"
+      }
+    },
+    {
+      "id": "FANTASY_LYRA",
+      "name": "Lyra Wren",
+      "category": "student",
+      "sub_type": "fantasy_hero",
+      "source": "dataset",
+      "theme_fit": ["fantasy"],
+      "subject_fit": ["literature", "history", "science"],
+      "image_prompt": "fantasy student mage, glowing eyes, cloak, magical school style",
+      "tags": ["fantasy", "wizard", "student", "magic", "hero"],
+      "palette": {
+        "hair": "#4d326c",
+        "skin": "#efc4a0",
+        "costume_primary": "#7d4dff",
+        "costume_accent": "#5eead4",
+        "eye": "#8b5cf6"
+      },
+      "costume": {
+        "top": "mage tunic",
+        "bottom": "adventure leggings",
+        "accessory": "spellbook",
+        "shoes": "boots"
+      }
+    },
+    {
+      "id": "FANTASY_CEDRIC",
+      "name": "Cedric Vale",
+      "category": "student",
+      "sub_type": "fantasy_knight",
+      "source": "dataset",
+      "theme_fit": ["fantasy"],
+      "subject_fit": ["history", "science", "literature"],
+      "image_prompt": "young knight student, bright armor accents, confident fantasy pose",
+      "tags": ["fantasy", "knight", "student", "heroic", "magic"],
+      "palette": {
+        "hair": "#47311d",
+        "skin": "#eac19a",
+        "costume_primary": "#1d4ed8",
+        "costume_accent": "#f59e0b",
+        "eye": "#2563eb"
+      },
+      "costume": {
+        "top": "light armor tunic",
+        "bottom": "travel pants",
+        "accessory": "crest shield",
+        "shoes": "boots"
+      }
+    },
+    {
+      "id": "FANTASY_RUNE",
+      "name": "Professor Runestone",
+      "category": "teacher",
+      "sub_type": "fantasy_mentor",
+      "source": "dataset",
+      "theme_fit": ["fantasy"],
+      "subject_fit": ["history", "science", "literature"],
+      "image_prompt": "wise fantasy professor, wizard robe, glowing staff, enchanted academy mentor",
+      "tags": ["fantasy", "teacher", "wizard", "mentor", "magic"],
+      "palette": {
+        "hair": "#5c3a21",
+        "skin": "#efc9a7",
+        "costume_primary": "#5b21b6",
+        "costume_accent": "#facc15",
+        "eye": "#7c3aed"
+      },
+      "costume": {
+        "top": "wizard robe",
+        "bottom": "layered robe",
+        "accessory": "glow staff",
+        "shoes": "boots"
+      }
+    },
+    {
+      "id": "MASCOT_BLOOP",
+      "name": "Bloop",
+      "category": "mascot",
+      "sub_type": "pixar_mascot",
+      "source": "dataset",
+      "theme_fit": ["pixar"],
+      "subject_fit": ["science", "mathematics", "literature"],
+      "image_prompt": "cute mascot blob, soft 3d body, tiny arms, comic companion",
+      "tags": ["mascot", "cute", "pixar", "kid", "friendly"],
+      "palette": {
+        "hair": "#5cc8ff",
+        "skin": "#c0f5ff",
+        "costume_primary": "#5cc8ff",
+        "costume_accent": "#ffbe0b",
+        "eye": "#22577a"
+      },
+      "costume": {
+        "top": "glossy mascot body",
+        "bottom": "none",
+        "accessory": "mini backpack",
+        "shoes": "none"
+      }
+    },
+    {
+      "id": "MASCOT_KITSU",
+      "name": "Kitsu",
+      "category": "mascot",
+      "sub_type": "anime_mascot",
+      "source": "dataset",
+      "theme_fit": ["anime"],
+      "subject_fit": ["science", "literature", "history"],
+      "image_prompt": "fox spirit mascot, anime style, magical tail, expressive eyes",
+      "tags": ["mascot", "anime", "fantasy", "spirit", "cute"],
+      "palette": {
+        "hair": "#f97316",
+        "skin": "#ffe0c2",
+        "costume_primary": "#f97316",
+        "costume_accent": "#7c3aed",
+        "eye": "#2563eb"
+      },
+      "costume": {
+        "top": "spirit scarf",
+        "bottom": "none",
+        "accessory": "glow charm",
+        "shoes": "none"
+      }
+    },
+    {
+      "id": "MASCOT_SPARK",
+      "name": "Blaze Pup",
+      "category": "mascot",
+      "sub_type": "hero_mascot",
+      "source": "dataset",
+      "theme_fit": ["superhero"],
+      "subject_fit": ["science", "history", "mathematics"],
+      "image_prompt": "superhero dog mascot, comic cape, bold heroic stance",
+      "tags": ["mascot", "superhero", "hero", "dog", "comic"],
+      "palette": {
+        "hair": "#8b5a2b",
+        "skin": "#f4d3af",
+        "costume_primary": "#ef233c",
+        "costume_accent": "#ffd60a",
+        "eye": "#1d4ed8"
+      },
+      "costume": {
+        "top": "mini hero cape",
+        "bottom": "none",
+        "accessory": "hero badge",
+        "shoes": "none"
+      }
+    }
+  ]
+}

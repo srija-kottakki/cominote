@@ -1,0 +1,171 @@
+{
+  "panel_layouts": [
+    {
+      "id": "balanced_grid",
+      "label": "Balanced Grid",
+      "theme_fit": ["anime", "cartoon_kids"],
+      "panel_edge": "rounded"
+    },
+    {
+      "id": "cinematic_grid",
+      "label": "Cinematic Grid",
+      "theme_fit": ["pixar", "fantasy"],
+      "panel_edge": "rounded"
+    },
+    {
+      "id": "action_splash",
+      "label": "Action Splash",
+      "theme_fit": ["superhero"],
+      "panel_edge": "bold"
+    },
+    {
+      "id": "manga_cascade",
+      "label": "Manga Cascade",
+      "theme_fit": ["manga"],
+      "panel_edge": "angled"
+    }
+  ],
+  "text_elements": {
+    "speech_bubbles": [
+      {
+        "type": "normal",
+        "fill": "#ffffff",
+        "theme_fit": ["anime", "fantasy"],
+        "radius": 22
+      },
+      {
+        "type": "pixar_round",
+        "fill": "#fff8f1",
+        "theme_fit": ["pixar", "cartoon_kids"],
+        "radius": 28
+      },
+      {
+        "type": "shouting",
+        "fill": "#fff9c4",
+        "theme_fit": ["anime", "superhero", "cartoon_kids"],
+        "radius": 14
+      },
+      {
+        "type": "action_burst",
+        "fill": "#fff4bf",
+        "theme_fit": ["superhero"],
+        "radius": 14
+      },
+      {
+        "type": "thought_bubble",
+        "fill": "#f8f6ff",
+        "theme_fit": ["anime", "fantasy"],
+        "radius": 24
+      },
+      {
+        "type": "manga_box",
+        "fill": "#ffffff",
+        "theme_fit": ["manga"],
+        "radius": 8
+      },
+      {
+        "type": "narration_box",
+        "fill": "#fff1a8",
+        "theme_fit": ["anime", "pixar", "superhero", "cartoon_kids", "manga", "fantasy"],
+        "radius": 14
+      }
+    ],
+    "sound_effects": [
+      {
+        "word": "POW!",
+        "color_primary": "#ea233f",
+        "color_secondary": "#ffd447"
+      },
+      {
+        "word": "WOW!",
+        "color_primary": "#ff7b00",
+        "color_secondary": "#fff0a8"
+      },
+      {
+        "word": "AHA!",
+        "color_primary": "#5e60ce",
+        "color_secondary": "#b8c0ff"
+      },
+      {
+        "word": "BOOM!",
+        "color_primary": "#232323",
+        "color_secondary": "#d9d9d9"
+      },
+      {
+        "word": "YES!",
+        "color_primary": "#22b573",
+        "color_secondary": "#d8ffe8"
+      },
+      {
+        "word": "ZAP!",
+        "color_primary": "#0ea5e9",
+        "color_secondary": "#ccefff"
+      }
+    ]
+  },
+  "styles": [
+    {
+      "name": "anime_school",
+      "label": "Anime School",
+      "theme_profile": "anime",
+      "layout_style": "balanced_grid",
+      "title_font_family": "condensed",
+      "body_font_family": "sans",
+      "effect_font_family": "display"
+    },
+    {
+      "name": "pixar_colorful",
+      "label": "Pixar Colorful",
+      "theme_profile": "pixar",
+      "layout_style": "cinematic_grid",
+      "title_font_family": "rounded",
+      "body_font_family": "rounded",
+      "effect_font_family": "rounded"
+    },
+    {
+      "name": "superhero_comic",
+      "label": "Superhero Comic",
+      "theme_profile": "superhero",
+      "layout_style": "action_splash",
+      "title_font_family": "display",
+      "body_font_family": "sans",
+      "effect_font_family": "display"
+    },
+    {
+      "name": "cute_cartoon",
+      "label": "Cartoon Kids",
+      "theme_profile": "cartoon_kids",
+      "layout_style": "balanced_grid",
+      "title_font_family": "playful",
+      "body_font_family": "rounded",
+      "effect_font_family": "playful"
+    },
+    {
+      "name": "educational_kids",
+      "label": "Educational Kids",
+      "theme_profile": "cartoon_kids",
+      "layout_style": "balanced_grid",
+      "title_font_family": "playful",
+      "body_font_family": "rounded",
+      "effect_font_family": "playful"
+    },
+    {
+      "name": "manga_story",
+      "label": "Manga Story",
+      "theme_profile": "manga",
+      "layout_style": "manga_cascade",
+      "title_font_family": "display",
+      "body_font_family": "condensed",
+      "effect_font_family": "display"
+    },
+    {
+      "name": "fantasy_adventure",
+      "label": "Fantasy Adventure",
+      "theme_profile": "fantasy",
+      "layout_style": "cinematic_grid",
+      "title_font_family": "serif",
+      "body_font_family": "serif",
+      "effect_font_family": "display"
+    }
+  ]
+}
