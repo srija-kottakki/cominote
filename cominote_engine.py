@@ -2326,7 +2326,17 @@ class CominoteEngine:
         draw.rounded_rectangle((px + shadow_offset, py + shadow_offset, px + pw + shadow_offset, py + ph + shadow_offset), radius=panel_radius, fill="#111111")
         self._gradient_rect(img, px, py, px + pw, py + ph, panel_theme["surface"], panel_theme["surface_alt"])
         self._draw_page_halftone(draw, px + 6, py + 6, px + pw - 6, py + ph - 6, panel_theme["accent_alt"], density=16, dot_r=2, opacity=0.08)
-        self._draw_dataset_background(draw, img, px, py, pw, ph, visual.get("background") or {}, panel_theme)
+        self._draw_dataset_background(
+            draw,
+            img,
+            px,
+            py,
+            pw,
+            ph,
+            visual.get("background") or {},
+            panel_theme,
+            theme_profile,
+        )
 
         draw.rounded_rectangle((px, py, px + pw, py + ph), radius=panel_radius, outline="#111111", width=8)
         draw.rounded_rectangle((px + 8, py + 8, px + pw - 8, py + ph - 8), radius=max(8, panel_radius - 6), outline=panel_theme["accent"], width=3)
@@ -2492,12 +2502,24 @@ class CominoteEngine:
             body_family,
         )
 
-    def _draw_dataset_background(self, draw, img, px: int, py: int, pw: int, ph: int, background: dict[str, Any], panel_theme: dict[str, str]) -> None:
+    def _draw_dataset_background(
+        self,
+        draw,
+        img,
+        px: int,
+        py: int,
+        pw: int,
+        ph: int,
+        background: dict[str, Any],
+        panel_theme: dict[str, str],
+        theme_profile: dict[str, Any] | None = None,
+    ) -> None:
         bg_palette = background.get("palette") or {}
         sky_top = self._safe_hex(bg_palette.get("primary"), panel_theme["surface"])
         sky_bottom = self._safe_hex(bg_palette.get("secondary"), panel_theme["surface_alt"])
         accent = self._safe_hex(bg_palette.get("accent"), panel_theme["accent"])
         floor = self._safe_hex(bg_palette.get("floor"), panel_theme["floor"])
+        theme_slug = str((theme_profile or {}).get("slug") or "").lower()
         horizon = py + int(ph * 0.72)
 
         self._gradient_rect(img, px + 4, py + 44, px + pw - 4, horizon, sky_top, sky_bottom)
@@ -2562,6 +2584,48 @@ class CominoteEngine:
                 draw.rectangle((board_x1, board_y1, board_x2, board_y2), fill="#18653d", outline="#111111", width=3)
                 draw.text((board_x1 + 16, board_y1 + 18), "IDEA", font=self._font(18, bold=True), fill="#ffffff")
                 draw.line([(board_x1 + 18, board_y1 + 52), (board_x2 - 18, board_y1 + 52)], fill="#ffffffaa", width=2)
+
+        if theme_slug == "anime":
+            for petal_x in range(px + 34, px + pw - 24, 88):
+                petal_y = py + 84 + (petal_x % 36)
+                draw.ellipse((petal_x, petal_y, petal_x + 10, petal_y + 6), fill="#ffd1ea", outline=accent)
+                draw.ellipse((petal_x + 6, petal_y + 2, petal_x + 16, petal_y + 8), fill="#ffe3f2", outline=accent)
+            draw.line([(px + 26, horizon - 48), (px + pw - 26, horizon - 84)], fill="#ffffff55", width=2)
+        elif theme_slug == "pixar":
+            for orb_x in range(px + 44, px + pw - 30, 110):
+                orb_y = py + 90 + (orb_x % 28)
+                draw.ellipse((orb_x, orb_y, orb_x + 34, orb_y + 34), fill="#ffffff2f")
+                draw.ellipse((orb_x + 6, orb_y + 6, orb_x + 16, orb_y + 16), fill="#ffffff66")
+            draw.arc((px + 20, horizon - 30, px + 170, horizon + 42), start=180, end=360, fill="#ffffff88", width=4)
+        elif theme_slug == "superhero":
+            skyline_y = horizon - 20
+            skyline = [
+                (px + 18, skyline_y), (px + 18, skyline_y - 72), (px + 52, skyline_y - 72), (px + 52, skyline_y - 28),
+                (px + 88, skyline_y - 28), (px + 88, skyline_y - 96), (px + 122, skyline_y - 96), (px + 122, skyline_y - 44),
+                (px + 156, skyline_y - 44), (px + 156, skyline_y - 124), (px + 192, skyline_y - 124), (px + 192, skyline_y),
+            ]
+            draw.polygon(skyline + [(px + 18, skyline_y)], fill="#1a1a1a66")
+            for beam_x in range(px + 36, px + pw - 24, 140):
+                draw.line([(beam_x, py + 56), (beam_x + 90, horizon - 6)], fill="#ffffff2f", width=5)
+        elif theme_slug == "manga":
+            for offset in range(0, pw, 18):
+                draw.line([(px + offset, py + 50), (px + offset - 120, py + ph - 40)], fill="#11111118", width=2)
+            draw.rectangle((px + 12, py + 58, px + 78, py + 74), fill="#11111122")
+            draw.rectangle((px + 12, py + 78, px + 128, py + 88), fill="#11111111")
+        elif theme_slug == "cartoon_kids":
+            bunting_y = py + 62
+            for bx in range(px + 28, px + pw - 28, 44):
+                draw.line([(bx, bunting_y), (bx + 18, bunting_y + 14)], fill=accent, width=2)
+                draw.polygon([(bx + 16, bunting_y + 12), (bx + 34, bunting_y + 18), (bx + 22, bunting_y + 32)], fill="#ffffff55", outline=accent)
+            for star_x in range(px + 40, px + pw - 32, 120):
+                self._draw_starburst(draw, star_x, py + 110 + (star_x % 34), 8, "#fff2aa", accent, spikes=6)
+        elif theme_slug == "fantasy":
+            for arch_x in range(px + pw - 280, px + pw - 20, 86):
+                draw.arc((arch_x, py + 82, arch_x + 46, py + 158), start=180, end=360, fill="#ffffff88", width=3)
+                draw.line([(arch_x + 4, py + 120), (arch_x + 4, horizon)], fill="#ffffff66", width=2)
+                draw.line([(arch_x + 42, py + 120), (arch_x + 42, horizon)], fill="#ffffff66", width=2)
+            for sparkle_x in range(px + 54, px + pw - 40, 96):
+                self._draw_starburst(draw, sparkle_x, py + 96 + (sparkle_x % 26), 7, "#ffffff", accent, spikes=5)
 
     def _draw_dataset_speech_bubble(
         self,
@@ -2656,6 +2720,353 @@ class CominoteEngine:
         )
         draw.multiline_text((x1 + 18, y1 + 23), wrapped, font=cap_font, fill="#111111", spacing=4)
 
+    @staticmethod
+    def _mono_hex(hex_color: str, contrast: float = 0.0) -> str:
+        r, g, b = _hex_to_rgb(hex_color)
+        gray = int((r * 0.299) + (g * 0.587) + (b * 0.114))
+        gray = max(24, min(232, gray + int(contrast)))
+        return _rgb_to_hex((gray, gray, gray))
+
+    def _character_palette_values(self, character: dict[str, Any], panel_theme: dict[str, str]) -> tuple[str, str, str, str, str]:
+        character_palette = character.get("palette") or {}
+        hair = self._safe_hex(character_palette.get("hair"), "#5b3d24")
+        skin = self._safe_hex(character_palette.get("skin"), "#f3c89c")
+        outfit = self._safe_hex(character_palette.get("costume_primary"), panel_theme["accent"])
+        outfit_alt = self._safe_hex(character_palette.get("costume_accent"), panel_theme["accent_alt"])
+        eye = self._safe_hex(character_palette.get("eye"), panel_theme["accent"])
+        return hair, skin, outfit, outfit_alt, eye
+
+    def _draw_character_prop(self, draw, cx: int, top_y: int, descriptor: str, theme_slug: str, outfit_alt: str, scale: float) -> None:
+        if "book" in descriptor or "scroll" in descriptor or theme_slug == "fantasy":
+            fill = "#fff3cf" if theme_slug != "manga" else "#f5f5f5"
+            draw.rounded_rectangle((cx + int(18 * scale), top_y + int(28 * scale), cx + int(52 * scale), top_y + int(52 * scale)), radius=int(7 * scale), fill=fill, outline="#111111", width=2)
+            draw.line([(cx + int(35 * scale), top_y + int(30 * scale)), (cx + int(35 * scale), top_y + int(50 * scale))], fill="#111111", width=1)
+        elif "beaker" in descriptor or "flask" in descriptor or "lab" in descriptor:
+            draw.rounded_rectangle((cx + int(22 * scale), top_y + int(26 * scale), cx + int(42 * scale), top_y + int(56 * scale)), radius=int(5 * scale), fill="#8be9fd", outline="#111111", width=2)
+            draw.ellipse((cx + int(16 * scale), top_y + int(16 * scale), cx + int(48 * scale), top_y + int(36 * scale)), fill="#8be9fd88")
+        elif "shield" in descriptor or "hero" in descriptor or theme_slug == "superhero":
+            draw.polygon(
+                [
+                    (cx + int(24 * scale), top_y + int(20 * scale)),
+                    (cx + int(44 * scale), top_y + int(20 * scale)),
+                    (cx + int(50 * scale), top_y + int(34 * scale)),
+                    (cx + int(34 * scale), top_y + int(56 * scale)),
+                    (cx + int(18 * scale), top_y + int(34 * scale)),
+                ],
+                fill=outfit_alt,
+                outline="#111111",
+            )
+
+    def _draw_anime_character(
+        self,
+        draw,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        descriptor: str,
+        pose_name: str,
+        expr: str,
+        mouth: str,
+        hair: str,
+        skin: str,
+        outfit: str,
+        outfit_alt: str,
+        eye: str,
+        panel_theme: dict[str, str],
+    ) -> None:
+        scale = max(0.54, min(w / 190, max(h, 1) / 190))
+        cx = x + w // 2
+        ground_y = y + h + 2
+        head_r = int(32 * scale)
+        torso_w = int(46 * scale)
+        torso_h = int(74 * scale)
+        leg_h = int(64 * scale)
+        body_top = ground_y - leg_h - torso_h
+        head_cy = body_top - head_r + int(18 * scale)
+
+        draw.ellipse((cx - int(40 * scale), ground_y - 6, cx + int(40 * scale), ground_y + 8), fill="#0000002a")
+        draw.rounded_rectangle((cx - 16, ground_y - leg_h, cx - 3, ground_y), radius=8, fill=outfit_alt, outline="#111111", width=2)
+        draw.rounded_rectangle((cx + 3, ground_y - leg_h, cx + 16, ground_y), radius=8, fill=outfit_alt, outline="#111111", width=2)
+        draw.polygon(
+            [
+                (cx - torso_w // 2, body_top + 12),
+                (cx, body_top),
+                (cx + torso_w // 2, body_top + 12),
+                (cx + torso_w // 2 - 6, body_top + torso_h),
+                (cx - torso_w // 2 + 6, body_top + torso_h),
+            ],
+            fill=outfit,
+            outline="#111111",
+        )
+        draw.polygon([(cx - 12, body_top + 6), (cx, body_top + 24), (cx + 12, body_top + 6)], fill="#ffffff", outline="#111111")
+        draw.polygon([(cx - 4, body_top + 16), (cx, body_top + 30), (cx + 4, body_top + 16)], fill=outfit_alt, outline="#111111")
+        draw.line([(cx - torso_w // 2 + 4, body_top + 26), (cx - 38, body_top + 44)], fill=outfit, width=max(4, int(8 * scale)))
+        draw.line([(cx + torso_w // 2 - 4, body_top + 24), (cx + 40, body_top + (8 if pose_name in {"pointing", "explaining"} else 42))], fill=outfit, width=max(4, int(8 * scale)))
+        draw.ellipse((cx - 48, body_top + 34, cx - 28, body_top + 54), fill=skin, outline="#111111", width=2)
+        draw.ellipse((cx + 28, body_top + (0 if pose_name in {"pointing", "explaining"} else 32), cx + 48, body_top + (20 if pose_name in {"pointing", "explaining"} else 52)), fill=skin, outline="#111111", width=2)
+        draw.rounded_rectangle((cx - 10, body_top - 2, cx + 10, body_top + 18), radius=5, fill=skin, outline="#111111", width=2)
+        draw.ellipse((cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r), fill=skin, outline="#111111", width=3)
+        self._draw_dataset_hair(draw, cx, head_cy, head_r + 2, hair, f"anime {descriptor}", scale)
+        for blush_x in (cx - 22, cx + 10):
+            draw.line([(blush_x, head_cy + 12), (blush_x + 8, head_cy + 16)], fill="#ff8fab", width=2)
+            draw.line([(blush_x, head_cy + 17), (blush_x + 8, head_cy + 21)], fill="#ff8fab", width=2)
+        self._draw_comic_eyes(draw, cx, head_cy + 4, max(28, int(head_r * 1.2)), expr, {"accent": eye}, max(1.0, scale * 1.08))
+        self._draw_comic_mouth(draw, cx, head_cy + int(22 * scale), mouth, max(0.84, scale * 0.85))
+        self._draw_emotion_marks(draw, cx + head_r + 12, head_cy - head_r + 6, ({"excited":"excited","proud":"proud"}.get(expr, "happy")), panel_theme["accent"], 0.9)
+        self._draw_character_prop(draw, cx, body_top, descriptor, "anime", outfit_alt, scale)
+
+    def _draw_pixar_character(
+        self,
+        draw,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        descriptor: str,
+        pose_name: str,
+        expr: str,
+        mouth: str,
+        hair: str,
+        skin: str,
+        outfit: str,
+        outfit_alt: str,
+        eye: str,
+        panel_theme: dict[str, str],
+        category: str,
+    ) -> None:
+        scale = max(0.56, min(w / 180, max(h, 1) / 180))
+        cx = x + w // 2
+        ground_y = y + h + 2
+        if category == "mascot":
+            blob_w = int(88 * scale)
+            blob_h = int(92 * scale)
+            draw.ellipse((cx - int(42 * scale), ground_y - 8, cx + int(42 * scale), ground_y + 10), fill="#00000022")
+            draw.rounded_rectangle((cx - blob_w // 2, ground_y - blob_h, cx + blob_w // 2, ground_y), radius=int(28 * scale), fill=outfit, outline="#111111", width=3)
+            draw.ellipse((cx - int(28 * scale), ground_y - blob_h + int(18 * scale), cx - int(4 * scale), ground_y - blob_h + int(48 * scale)), fill="#ffffff", outline="#111111", width=2)
+            draw.ellipse((cx + int(4 * scale), ground_y - blob_h + int(18 * scale), cx + int(28 * scale), ground_y - blob_h + int(48 * scale)), fill="#ffffff", outline="#111111", width=2)
+            draw.ellipse((cx - int(18 * scale), ground_y - blob_h + int(26 * scale), cx - int(8 * scale), ground_y - blob_h + int(40 * scale)), fill=eye)
+            draw.ellipse((cx + int(8 * scale), ground_y - blob_h + int(26 * scale), cx + int(18 * scale), ground_y - blob_h + int(40 * scale)), fill=eye)
+            self._draw_comic_mouth(draw, cx, ground_y - blob_h + int(58 * scale), mouth, max(0.75, scale * 0.8))
+            draw.ellipse((cx - int(48 * scale), ground_y - blob_h + int(38 * scale), cx - int(26 * scale), ground_y - blob_h + int(60 * scale)), fill=outfit_alt, outline="#111111", width=2)
+            draw.ellipse((cx + int(26 * scale), ground_y - blob_h + int(38 * scale), cx + int(48 * scale), ground_y - blob_h + int(60 * scale)), fill=outfit_alt, outline="#111111", width=2)
+            return
+
+        head_r = int(38 * scale)
+        torso_w = int(58 * scale)
+        torso_h = int(70 * scale)
+        leg_h = int(46 * scale)
+        body_top = ground_y - leg_h - torso_h
+        head_cy = body_top - head_r + int(24 * scale)
+        draw.ellipse((cx - int(46 * scale), ground_y - 8, cx + int(46 * scale), ground_y + 10), fill="#00000026")
+        draw.rounded_rectangle((cx - 18, ground_y - leg_h, cx - 2, ground_y), radius=9, fill=outfit_alt, outline="#111111", width=2)
+        draw.rounded_rectangle((cx + 2, ground_y - leg_h, cx + 18, ground_y), radius=9, fill=outfit_alt, outline="#111111", width=2)
+        draw.rounded_rectangle((cx - torso_w // 2, body_top, cx + torso_w // 2, body_top + torso_h), radius=int(18 * scale), fill=outfit, outline="#111111", width=3)
+        draw.ellipse((cx - int(16 * scale), body_top + int(18 * scale), cx + int(16 * scale), body_top + int(48 * scale)), fill="#ffffff99")
+        draw.line([(cx - torso_w // 2 + 4, body_top + 26), (cx - 42, body_top + 44)], fill=outfit, width=max(6, int(10 * scale)))
+        draw.line([(cx + torso_w // 2 - 4, body_top + 26), (cx + 42, body_top + (10 if pose_name in {"pointing", "explaining"} else 42))], fill=outfit, width=max(6, int(10 * scale)))
+        draw.ellipse((cx - 52, body_top + 34, cx - 28, body_top + 58), fill=skin, outline="#111111", width=2)
+        draw.ellipse((cx + 28, body_top + (0 if pose_name in {"pointing", "explaining"} else 32), cx + 52, body_top + (24 if pose_name in {"pointing", "explaining"} else 56)), fill=skin, outline="#111111", width=2)
+        draw.ellipse((cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r), fill=skin, outline="#111111", width=3)
+        self._draw_dataset_hair(draw, cx, head_cy, head_r + 1, hair, f"pixar {descriptor}", scale)
+        draw.ellipse((cx - int(30 * scale), head_cy + int(10 * scale), cx - int(18 * scale), head_cy + int(20 * scale)), fill="#ffb5a7")
+        draw.ellipse((cx + int(18 * scale), head_cy + int(10 * scale), cx + int(30 * scale), head_cy + int(20 * scale)), fill="#ffb5a7")
+        self._draw_comic_eyes(draw, cx, head_cy + 6, max(30, int(head_r * 1.2)), expr, {"accent": eye}, max(1.04, scale * 1.1))
+        draw.ellipse((cx - int(4 * scale), head_cy + int(14 * scale), cx + int(4 * scale), head_cy + int(20 * scale)), fill="#d2876c")
+        self._draw_comic_mouth(draw, cx, head_cy + int(26 * scale), mouth, max(0.88, scale * 0.9))
+        self._draw_character_prop(draw, cx, body_top, descriptor, "pixar", outfit_alt, scale)
+
+    def _draw_superhero_dataset_character(
+        self,
+        draw,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        descriptor: str,
+        expr: str,
+        mouth: str,
+        hair: str,
+        skin: str,
+        outfit: str,
+        outfit_alt: str,
+        eye: str,
+        panel_theme: dict[str, str],
+    ) -> None:
+        scale = max(0.56, min(w / 176, max(h, 1) / 176))
+        cx = x + w // 2
+        ground_y = y + h + 2
+        head_r = int(34 * scale)
+        shoulder_w = int(82 * scale)
+        waist_w = int(54 * scale)
+        torso_h = int(86 * scale)
+        leg_h = int(64 * scale)
+        body_top = ground_y - leg_h - torso_h
+        head_cy = body_top - head_r + int(22 * scale)
+        draw.ellipse((cx - int(48 * scale), ground_y - 6, cx + int(48 * scale), ground_y + 10), fill="#0000002f")
+        cape = [(cx - int(26 * scale), body_top + int(12 * scale)), (cx - int(62 * scale), ground_y - int(28 * scale)), (cx + int(2 * scale), ground_y - int(14 * scale)), (cx + int(18 * scale), body_top + int(34 * scale))]
+        draw.polygon(cape, fill=outfit_alt, outline="#111111")
+        draw.rounded_rectangle((cx - 20, ground_y - leg_h, cx - 4, ground_y), radius=8, fill=outfit_alt, outline="#111111", width=2)
+        draw.rounded_rectangle((cx + 4, ground_y - leg_h, cx + 20, ground_y), radius=8, fill=outfit_alt, outline="#111111", width=2)
+        draw.polygon(
+            [
+                (cx - shoulder_w // 2, body_top + 18),
+                (cx + shoulder_w // 2, body_top + 18),
+                (cx + waist_w // 2, body_top + torso_h),
+                (cx - waist_w // 2, body_top + torso_h),
+            ],
+            fill=outfit,
+            outline="#111111",
+        )
+        draw.ellipse((cx - int(18 * scale), body_top + int(24 * scale), cx + int(18 * scale), body_top + int(58 * scale)), fill="#ffffff", outline="#111111", width=2)
+        draw.arc((cx - int(10 * scale), body_top + int(30 * scale), cx + int(10 * scale), body_top + int(50 * scale)), start=40, end=320, fill=panel_theme["accent"], width=4)
+        draw.rectangle((cx - waist_w // 2, body_top + torso_h - 18, cx + waist_w // 2, body_top + torso_h - 6), fill="#111111")
+        draw.line([(cx - shoulder_w // 2 + 6, body_top + 28), (cx - 56, body_top + 10)], fill=outfit, width=max(6, int(10 * scale)))
+        draw.line([(cx + shoulder_w // 2 - 6, body_top + 28), (cx + 54, body_top - 18)], fill=outfit, width=max(6, int(10 * scale)))
+        draw.ellipse((cx - 66, body_top, cx - 42, body_top + 24), fill=skin, outline="#111111", width=2)
+        draw.ellipse((cx + 42, body_top - 28, cx + 68, body_top - 2), fill=skin, outline="#111111", width=2)
+        draw.ellipse((cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r), fill=skin, outline="#111111", width=3)
+        self._draw_dataset_hair(draw, cx, head_cy, head_r + 1, hair, f"hero {descriptor}", scale)
+        draw.rounded_rectangle((cx - int(28 * scale), head_cy - int(12 * scale), cx + int(28 * scale), head_cy + int(10 * scale)), radius=int(8 * scale), outline=outfit_alt, width=max(2, int(3 * scale)))
+        self._draw_comic_eyes(draw, cx, head_cy + 1, max(26, int(head_r * 0.95)), expr, {"accent": eye}, max(0.86, scale * 0.9))
+        self._draw_comic_mouth(draw, cx, head_cy + int(22 * scale), mouth, max(0.82, scale * 0.84))
+        self._draw_emotion_marks(draw, cx + head_r + 14, head_cy - head_r + 8, "excited" if expr == "excited" else "proud", panel_theme["accent"], 0.95)
+        self._draw_character_prop(draw, cx, body_top, descriptor, "superhero", outfit_alt, scale)
+
+    def _draw_manga_character(
+        self,
+        draw,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        descriptor: str,
+        pose_name: str,
+        expr: str,
+        mouth: str,
+        hair: str,
+        skin: str,
+        outfit: str,
+        outfit_alt: str,
+        eye: str,
+        panel_theme: dict[str, str],
+    ) -> None:
+        hair = self._mono_hex(hair, -26)
+        skin = self._mono_hex(skin, 32)
+        outfit = self._mono_hex(outfit, -36)
+        outfit_alt = self._mono_hex(outfit_alt, 16)
+        eye = self._mono_hex(eye, -60)
+        scale = max(0.52, min(w / 188, max(h, 1) / 188))
+        cx = x + w // 2
+        ground_y = y + h + 2
+        head_r = int(31 * scale)
+        torso_w = int(44 * scale)
+        torso_h = int(76 * scale)
+        leg_h = int(68 * scale)
+        body_top = ground_y - leg_h - torso_h
+        head_cy = body_top - head_r + int(18 * scale)
+        draw.ellipse((cx - int(38 * scale), ground_y - 4, cx + int(38 * scale), ground_y + 8), fill="#00000022")
+        for line_x in range(x + 4, x + w - 4, 18):
+            draw.line([(line_x, y + 12), (line_x - 32, ground_y - 10)], fill="#11111112", width=1)
+        draw.rounded_rectangle((cx - 14, ground_y - leg_h, cx - 2, ground_y), radius=7, fill=outfit_alt, outline="#111111", width=2)
+        draw.rounded_rectangle((cx + 2, ground_y - leg_h, cx + 14, ground_y), radius=7, fill=outfit_alt, outline="#111111", width=2)
+        draw.polygon([(cx - torso_w // 2, body_top + 12), (cx + torso_w // 2, body_top + 12), (cx + torso_w // 2 - 6, body_top + torso_h), (cx - torso_w // 2 + 6, body_top + torso_h)], fill=outfit, outline="#111111")
+        draw.line([(cx - torso_w // 2 + 4, body_top + 24), (cx - 38, body_top + 44)], fill=outfit, width=max(4, int(8 * scale)))
+        draw.line([(cx + torso_w // 2 - 4, body_top + 24), (cx + 42, body_top + (10 if pose_name in {"pointing", "explaining"} else 42))], fill=outfit, width=max(4, int(8 * scale)))
+        draw.ellipse((cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r), fill=skin, outline="#111111", width=3)
+        self._draw_dataset_hair(draw, cx, head_cy, head_r + 2, hair, f"manga {descriptor} spiky", scale)
+        draw.line([(cx - head_r + 8, head_cy - head_r + 6), (cx + head_r - 8, head_cy - head_r + 2)], fill="#111111", width=2)
+        self._draw_comic_eyes(draw, cx, head_cy + 3, max(26, int(head_r * 1.02)), "think" if expr == "think" else expr, {"accent": eye}, max(0.9, scale * 0.96))
+        self._draw_comic_mouth(draw, cx, head_cy + int(22 * scale), mouth, max(0.8, scale * 0.82))
+        self._draw_character_prop(draw, cx, body_top, descriptor, "manga", outfit_alt, scale)
+
+    def _draw_kids_character(
+        self,
+        draw,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        descriptor: str,
+        pose_name: str,
+        expr: str,
+        mouth: str,
+        hair: str,
+        skin: str,
+        outfit: str,
+        outfit_alt: str,
+        eye: str,
+        panel_theme: dict[str, str],
+    ) -> None:
+        scale = max(0.58, min(w / 170, max(h, 1) / 170))
+        cx = x + w // 2
+        ground_y = y + h + 2
+        head_r = int(40 * scale)
+        torso_w = int(42 * scale)
+        torso_h = int(54 * scale)
+        leg_h = int(42 * scale)
+        body_top = ground_y - leg_h - torso_h
+        head_cy = body_top - head_r + int(28 * scale)
+        draw.ellipse((cx - int(44 * scale), ground_y - 8, cx + int(44 * scale), ground_y + 10), fill="#00000022")
+        draw.rounded_rectangle((cx - 16, ground_y - leg_h, cx - 2, ground_y), radius=8, fill=outfit_alt, outline="#111111", width=2)
+        draw.rounded_rectangle((cx + 2, ground_y - leg_h, cx + 16, ground_y), radius=8, fill=outfit_alt, outline="#111111", width=2)
+        draw.rounded_rectangle((cx - torso_w // 2, body_top, cx + torso_w // 2, body_top + torso_h), radius=int(14 * scale), fill=outfit, outline="#111111", width=3)
+        draw.rectangle((cx - int(10 * scale), body_top + int(10 * scale), cx + int(10 * scale), body_top + torso_h - int(8 * scale)), fill="#ffffff", outline="#111111", width=2)
+        draw.line([(cx - torso_w // 2 + 4, body_top + 18), (cx - 34, body_top + 34)], fill=outfit, width=max(5, int(8 * scale)))
+        draw.line([(cx + torso_w // 2 - 4, body_top + 18), (cx + 36, body_top + (8 if pose_name in {"pointing", "explaining"} else 34))], fill=outfit, width=max(5, int(8 * scale)))
+        draw.ellipse((cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r), fill=skin, outline="#111111", width=3)
+        self._draw_dataset_hair(draw, cx, head_cy, head_r + 1, hair, f"kids {descriptor}", scale)
+        for freckle_x in (-14, -8, 8, 14):
+            draw.ellipse((cx + freckle_x - 1, head_cy + 16, cx + freckle_x + 1, head_cy + 18), fill="#d08b6f")
+        self._draw_comic_eyes(draw, cx, head_cy + 6, max(30, int(head_r * 1.12)), expr, {"accent": eye}, max(1.05, scale * 1.12))
+        self._draw_comic_mouth(draw, cx, head_cy + int(24 * scale), mouth, max(0.86, scale * 0.88))
+        self._draw_character_prop(draw, cx, body_top, descriptor, "cartoon_kids", outfit_alt, scale)
+
+    def _draw_fantasy_character(
+        self,
+        draw,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        descriptor: str,
+        pose_name: str,
+        expr: str,
+        mouth: str,
+        hair: str,
+        skin: str,
+        outfit: str,
+        outfit_alt: str,
+        eye: str,
+        panel_theme: dict[str, str],
+    ) -> None:
+        scale = max(0.54, min(w / 186, max(h, 1) / 186))
+        cx = x + w // 2
+        ground_y = y + h + 2
+        head_r = int(33 * scale)
+        robe_w = int(74 * scale)
+        robe_h = int(96 * scale)
+        body_top = ground_y - robe_h
+        head_cy = body_top - head_r + int(18 * scale)
+        draw.ellipse((cx - int(42 * scale), ground_y - 6, cx + int(42 * scale), ground_y + 10), fill="#00000029")
+        cloak = [(cx - int(28 * scale), body_top + int(10 * scale)), (cx - int(62 * scale), ground_y), (cx + int(2 * scale), ground_y - int(12 * scale)), (cx + int(22 * scale), body_top + int(28 * scale))]
+        draw.polygon(cloak, fill=outfit_alt, outline="#111111")
+        draw.polygon([(cx - robe_w // 2, body_top + 12), (cx + robe_w // 2, body_top + 12), (cx + int(26 * scale), ground_y), (cx - int(26 * scale), ground_y)], fill=outfit, outline="#111111")
+        draw.polygon([(cx - 14, body_top + 12), (cx, body_top + 36), (cx + 14, body_top + 12)], fill="#fff4d6", outline="#111111")
+        draw.line([(cx - int(18 * scale), body_top + int(12 * scale)), (cx - int(10 * scale), ground_y - int(8 * scale))], fill=outfit_alt, width=3)
+        draw.line([(cx + int(18 * scale), body_top + int(12 * scale)), (cx + int(10 * scale), ground_y - int(8 * scale))], fill=outfit_alt, width=3)
+        draw.line([(cx - 20, body_top + 28), (cx - 48, body_top + 48)], fill=outfit, width=max(5, int(8 * scale)))
+        draw.line([(cx + 20, body_top + 24), (cx + 44, body_top + (0 if pose_name == "spell_cast" else 42))], fill=outfit, width=max(5, int(8 * scale)))
+        draw.ellipse((cx - 58, body_top + 38, cx - 34, body_top + 60), fill=skin, outline="#111111", width=2)
+        draw.ellipse((cx + 34, body_top + (0 if pose_name == "spell_cast" else 32), cx + 58, body_top + (22 if pose_name == "spell_cast" else 54)), fill=skin, outline="#111111", width=2)
+        draw.ellipse((cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r), fill=skin, outline="#111111", width=3)
+        self._draw_dataset_hair(draw, cx, head_cy, head_r + 1, hair, f"fantasy {descriptor}", scale)
+        self._draw_comic_eyes(draw, cx, head_cy + 3, max(26, int(head_r * 1.0)), expr, {"accent": eye}, max(0.9, scale * 0.95))
+        self._draw_comic_mouth(draw, cx, head_cy + int(22 * scale), mouth, max(0.82, scale * 0.84))
+        draw.line([(cx + 46, body_top + 4), (cx + 58, body_top - 36)], fill="#111111", width=3)
+        self._draw_starburst(draw, cx + 60, body_top - 42, int(8 * scale), "#ffffff", panel_theme["accent"], spikes=6)
+        self._draw_character_prop(draw, cx, body_top, descriptor, "fantasy", outfit_alt, scale)
+
     def _draw_dataset_character(
         self,
         draw,
@@ -2669,6 +3080,9 @@ class CominoteEngine:
     ) -> None:
         character = visual.get("character") or {}
         descriptor = self._record_blob(character)
+        theme_profile = visual.get("theme_profile") or {}
+        theme_slug = str(theme_profile.get("slug") or "").lower()
+        category = str(character.get("category") or "").lower()
         is_archive = character.get("source") == "archive"
         if "robot" in descriptor:
             self._draw_robot_character(draw, x, y, w, h, visual, panel_theme)
@@ -2677,126 +3091,19 @@ class CominoteEngine:
         emotion_name = (visual.get("emotion") or {}).get("name", "happy")
         pose_name = (visual.get("pose") or {}).get("name", "standing")
         expr, mouth = self._emotion_face(emotion_name)
-        character_palette = character.get("palette") or {}
-        hair = self._safe_hex(character_palette.get("hair"), "#5b3d24")
-        skin = self._safe_hex(character_palette.get("skin"), "#f3c89c")
-        outfit = self._safe_hex(character_palette.get("costume_primary"), panel_theme["accent"])
-        outfit_alt = self._safe_hex(character_palette.get("costume_accent"), panel_theme["accent_alt"])
-        eye = self._safe_hex(character_palette.get("eye"), panel_theme["accent"])
-
-        style_name = (style_record.get("name") or "").lower()
-        scale = max(0.48, min(w / 180, max(h, 1) / 180))
-        head_factor = 1.12 if style_name in {"cute_cartoon", "educational_kids"} else 0.98 if style_name == "superhero_comic" else 1.0
-        body_factor = 0.92 if style_name in {"cute_cartoon", "educational_kids"} else 1.08 if style_name == "superhero_comic" else 1.0
-        if is_archive:
-            body_factor += 0.06
-        head_r = int(34 * scale * head_factor)
-        torso_w = int(52 * scale)
-        torso_h = int(72 * scale * body_factor)
-        leg_h = int(56 * scale)
-        ground_y = y + h + 4
-        airborne = pose_name in {"jumping", "celebrating"}
-        if airborne:
-            ground_y -= int(18 * scale)
-        cx = x + w // 2
-        body_top = ground_y - leg_h - torso_h
-        head_cy = body_top - head_r + 20
-
-        if not airborne:
-            draw.ellipse((cx - int(42 * scale), ground_y - 6, cx + int(42 * scale), ground_y + 10), fill="#00000035")
-
-        if is_archive:
-            cape_color = self._safe_hex(character.get("publisher_colors", {}).get("primary"), outfit_alt)
-            draw.polygon(
-                [
-                    (cx - int(20 * scale), body_top + int(10 * scale)),
-                    (cx - int(54 * scale), ground_y - int(18 * scale)),
-                    (cx + int(2 * scale), ground_y - int(8 * scale)),
-                    (cx + int(16 * scale), body_top + int(26 * scale)),
-                ],
-                fill=cape_color,
-                outline="#111111",
-            )
-
-        if pose_name == "running":
-            draw.line([(cx - 16, ground_y - 10), (cx - 42, ground_y + 18)], fill=outfit_alt, width=max(4, int(8 * scale)))
-            draw.line([(cx + 12, ground_y - 10), (cx + 34, ground_y + 4)], fill=outfit_alt, width=max(4, int(8 * scale)))
+        hair, skin, outfit, outfit_alt, eye = self._character_palette_values(character, panel_theme)
+        if theme_slug == "superhero" or is_archive:
+            self._draw_superhero_dataset_character(draw, x, y, w, h, descriptor, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme)
+        elif theme_slug == "anime":
+            self._draw_anime_character(draw, x, y, w, h, descriptor, pose_name, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme)
+        elif theme_slug == "pixar":
+            self._draw_pixar_character(draw, x, y, w, h, descriptor, pose_name, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme, category)
+        elif theme_slug == "manga":
+            self._draw_manga_character(draw, x, y, w, h, descriptor, pose_name, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme)
+        elif theme_slug == "fantasy":
+            self._draw_fantasy_character(draw, x, y, w, h, descriptor, pose_name, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme)
         else:
-            draw.rounded_rectangle((cx - 22, ground_y - leg_h, cx - 6, ground_y), radius=8, fill=outfit_alt, outline="#111111", width=2)
-            draw.rounded_rectangle((cx + 6, ground_y - leg_h, cx + 22, ground_y), radius=8, fill=outfit_alt, outline="#111111", width=2)
-
-        draw.rounded_rectangle((cx - torso_w // 2, body_top, cx + torso_w // 2, body_top + torso_h), radius=16, fill=outfit, outline="#111111", width=3)
-        draw.rectangle((cx - torso_w // 2, body_top + torso_h - 16, cx + torso_w // 2, body_top + torso_h - 6), fill="#111111")
-        draw.ellipse((cx - 16, body_top + 18, cx + 16, body_top + 50), fill="#ffffff", outline="#111111", width=2)
-        draw.arc((cx - 10, body_top + 24, cx + 10, body_top + 44), start=45, end=320, fill=panel_theme["accent"], width=4)
-
-        if pose_name in {"pointing", "explaining"}:
-            draw.line([(cx + torso_w // 2 - 4, body_top + 24), (cx + 54, body_top + 4)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.ellipse((cx + 48, body_top - 2, cx + 68, body_top + 18), fill=skin, outline="#111111", width=2)
-            draw.line([(cx - torso_w // 2 + 4, body_top + 24), (cx - 42, body_top + 40)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.ellipse((cx - 52, body_top + 30, cx - 30, body_top + 52), fill=skin, outline="#111111", width=2)
-        elif pose_name == "thinking":
-            draw.line([(cx + torso_w // 2 - 4, body_top + 26), (cx + 38, body_top + 40)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.ellipse((cx + 30, body_top + 32, cx + 52, body_top + 52), fill=skin, outline="#111111", width=2)
-            draw.line([(cx - torso_w // 2 + 4, body_top + 26), (cx - 10, head_cy + head_r + 6)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.ellipse((cx - 20, head_cy + head_r, cx + 2, head_cy + head_r + 22), fill=skin, outline="#111111", width=2)
-        elif pose_name in {"jumping", "celebrating"}:
-            draw.line([(cx - torso_w // 2 + 4, body_top + 26), (cx - 48, body_top - 18)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.line([(cx + torso_w // 2 - 4, body_top + 26), (cx + 48, body_top - 18)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.ellipse((cx - 58, body_top - 28, cx - 34, body_top - 4), fill=skin, outline="#111111", width=2)
-            draw.ellipse((cx + 34, body_top - 28, cx + 58, body_top - 4), fill=skin, outline="#111111", width=2)
-        elif pose_name == "shocked_reaction":
-            draw.line([(cx - torso_w // 2 + 4, body_top + 26), (cx - 54, body_top + 10)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.line([(cx + torso_w // 2 - 4, body_top + 26), (cx + 54, body_top + 10)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.ellipse((cx - 64, body_top, cx - 42, body_top + 22), fill=skin, outline="#111111", width=2)
-            draw.ellipse((cx + 42, body_top, cx + 64, body_top + 22), fill=skin, outline="#111111", width=2)
-        else:
-            draw.line([(cx - torso_w // 2 + 4, body_top + 24), (cx - 38, body_top + 52)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.line([(cx + torso_w // 2 - 4, body_top + 24), (cx + 38, body_top + 52)], fill=outfit, width=max(5, int(10 * scale)))
-            draw.ellipse((cx - 48, body_top + 42, cx - 24, body_top + 64), fill=skin, outline="#111111", width=2)
-            draw.ellipse((cx + 24, body_top + 42, cx + 48, body_top + 64), fill=skin, outline="#111111", width=2)
-
-        draw.rounded_rectangle((cx - 12, body_top - 2, cx + 12, body_top + 20), radius=4, fill=skin, outline="#111111", width=2)
-        draw.ellipse((cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r), fill=skin, outline="#111111", width=3)
-        self._draw_dataset_hair(draw, cx, head_cy, head_r, hair, descriptor, scale)
-        self._draw_comic_eyes(draw, cx, head_cy + 2, head_r, expr, {"accent": eye}, max(0.75, scale * 0.82))
-        self._draw_comic_mouth(draw, cx, head_cy + int(22 * scale), mouth, max(0.75, scale * 0.8))
-
-        if is_archive:
-            hero_mask = self._safe_hex(character.get("publisher_colors", {}).get("accent"), outfit_alt)
-            draw.rounded_rectangle(
-                (cx - int(28 * scale), head_cy - int(12 * scale), cx + int(28 * scale), head_cy + int(10 * scale)),
-                radius=int(8 * scale),
-                outline=hero_mask,
-                width=max(2, int(3 * scale)),
-            )
-
-        if "glasses" in descriptor:
-            draw.ellipse((cx - 26, head_cy - 8, cx - 4, head_cy + 14), outline="#111111", width=2)
-            draw.ellipse((cx + 4, head_cy - 8, cx + 26, head_cy + 14), outline="#111111", width=2)
-            draw.line([(cx - 4, head_cy + 2), (cx + 4, head_cy + 2)], fill="#111111", width=2)
-        if "goggles" in descriptor:
-            draw.rounded_rectangle((cx - 30, head_cy - head_r - 4, cx + 30, head_cy - head_r + 10), radius=5, fill=outfit_alt, outline="#111111", width=2)
-        if "crown" in descriptor or "king" in descriptor:
-            draw.polygon([(cx - 22, head_cy - head_r - 6), (cx - 10, head_cy - head_r - 24), (cx, head_cy - head_r - 10), (cx + 10, head_cy - head_r - 24), (cx + 22, head_cy - head_r - 6)], fill="#ffd166", outline="#111111")
-        if "headband" in descriptor:
-            draw.rectangle((cx - 26, head_cy - head_r + 2, cx + 26, head_cy - head_r + 10), fill=outfit_alt, outline="#111111", width=2)
-
-        if "book" in descriptor or pose_name == "reading":
-            draw.rounded_rectangle((cx - 20, body_top + 30, cx + 26, body_top + 58), radius=6, fill="#fff5d6", outline="#111111", width=2)
-            draw.line([(cx + 3, body_top + 32), (cx + 3, body_top + 56)], fill="#111111", width=1)
-        elif "beaker" in descriptor or "flask" in descriptor:
-            draw.rounded_rectangle((cx + 28, body_top + 30, cx + 46, body_top + 58), radius=5, fill="#8be9fd", outline="#111111", width=2)
-            draw.ellipse((cx + 22, body_top + 18, cx + 52, body_top + 40), fill="#8be9fd88")
-        elif "clipboard" in descriptor:
-            draw.rounded_rectangle((cx + 22, body_top + 24, cx + 48, body_top + 58), radius=4, fill="#f4e4b6", outline="#111111", width=2)
-        elif "scroll" in descriptor:
-            draw.rounded_rectangle((cx + 18, body_top + 28, cx + 50, body_top + 50), radius=8, fill="#f7e8c1", outline="#111111", width=2)
-        elif "flag" in descriptor:
-            draw.line([(cx + 34, body_top + 16), (cx + 34, body_top + 60)], fill="#111111", width=3)
-            draw.polygon([(cx + 36, body_top + 16), (cx + 62, body_top + 24), (cx + 36, body_top + 34)], fill=outfit_alt, outline="#111111")
-
-        self._draw_emotion_marks(draw, cx + head_r + 14, head_cy - head_r + 8, emotion_name, panel_theme["accent"], max(0.8, scale))
+            self._draw_kids_character(draw, x, y, w, h, descriptor, pose_name, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme)
 
     def _draw_dataset_hair(self, draw, cx: int, cy: int, radius: int, hair_color: str, descriptor: str, scale: float) -> None:
         draw.pieslice((cx - radius - 2, cy - radius - 14, cx + radius + 2, cy + radius - 6), 180, 360, fill=hair_color, outline="#111111")
