@@ -628,6 +628,12 @@ class CominoteEngine:
                 "theme_profile_label": visual_plan["theme_profile"]["label"],
                 "font_label": visual_plan["theme_profile"].get("font_label", ""),
                 "layout_label": visual_plan["theme_profile"].get("layout_label", ""),
+                "theme_render": visual_plan.get("theme_render", {}),
+                "featured_character_names": [
+                    str(item.get("name") or "").strip()
+                    for item in (visual_plan.get("theme_render", {}).get("featured_cast") or [])
+                    if isinstance(item, dict) and str(item.get("name") or "").strip()
+                ],
                 "cast_names": [panel.get("character", {}).get("name", "") for panel in visual_plan["panels"]],
                 "background_names": [panel.get("background", {}).get("name", "") for panel in visual_plan["panels"]],
                 "user_id": user_id,
@@ -683,6 +689,7 @@ class CominoteEngine:
                 "ui_body_font": theme.get("ui_body_font", "\"Comic Neue\", cursive"),
                 "theme_accent": theme.get("theme_accent", "#f4631e"),
                 "theme_surface": theme.get("theme_surface", "#ffffff"),
+                "theme_render": theme.get("theme_render", {}),
                 "preview": theme["preview"],
                 "word_count": theme["word_count"],
                 "segment_count": len(theme["segments"]),
@@ -1127,6 +1134,7 @@ class CominoteEngine:
         self._theme_datasets: list[dict[str, Any]] = []
         self._theme_datasets_by_slug: dict[str, dict[str, Any]] = {}
         if not self.theme_dir.exists():
+            self._load_virtual_theme_datasets()
             return
 
         for path in sorted(self.theme_dir.glob("*.json")):
@@ -1135,6 +1143,7 @@ class CominoteEngine:
                 continue
             self._theme_datasets.append(theme)
             self._theme_datasets_by_slug[theme["slug"]] = theme
+        self._load_virtual_theme_datasets()
 
     def _load_theme_dataset(self, path: Path) -> dict[str, Any] | None:
         try:
@@ -1164,6 +1173,20 @@ class CominoteEngine:
         subject = self._infer_theme_subject(title, source_text)
         recommended_style = self._infer_theme_style(title, subject, source_text)
         theme_profile = self._resolve_theme_profile(theme_meta=None, requested_style=recommended_style, title=title, source_text=source_text)
+        theme_render = self._resolve_theme_render(
+            title=title,
+            source_text=source_text,
+            theme_profile_slug=str(theme_profile.get("slug") or "cartoon_kids"),
+        )
+        render_profile_slug = str(theme_render.get("theme_profile") or "")
+        if render_profile_slug in self._theme_profiles_by_slug:
+            theme_profile = self._default_theme_profile(render_profile_slug)
+        featured_names = [
+            str(item.get("name") or "").strip()
+            for item in (theme_render.get("featured_cast") or [])
+            if isinstance(item, dict) and str(item.get("name") or "").strip()
+        ]
+        featured_background = theme_render.get("featured_background") if isinstance(theme_render.get("featured_background"), dict) else {}
         preview = textwrap.shorten(segments[0], width=240, placeholder="...")
         word_count = sum(len(segment.split()) for segment in segments)
         return {
@@ -1173,18 +1196,150 @@ class CominoteEngine:
             "recommended_style": recommended_style,
             "theme_profile": theme_profile["slug"],
             "theme_profile_label": theme_profile["label"],
-            "theme_character_hint": theme_profile.get("character_summary", ""),
-            "theme_background_hint": theme_profile.get("background_summary", ""),
+            "theme_character_hint": ", ".join(featured_names) or theme_profile.get("character_summary", ""),
+            "theme_background_hint": str(featured_background.get("name") or theme_profile.get("background_summary", "")),
             "font_label": theme_profile.get("font_label", ""),
             "layout_label": theme_profile.get("layout_label", ""),
             "ui_display_font": theme_profile.get("ui_display_font", "\"Bangers\", cursive"),
             "ui_body_font": theme_profile.get("ui_body_font", "\"Comic Neue\", cursive"),
-            "theme_accent": theme_profile.get("accent", "#f4631e"),
-            "theme_surface": theme_profile.get("surface", "#ffffff"),
+            "theme_accent": (theme_render.get("ui") or {}).get("accent", theme_profile.get("accent", "#f4631e")),
+            "theme_surface": (theme_render.get("ui") or {}).get("surface", theme_profile.get("surface", "#ffffff")),
+            "theme_render": theme_render,
             "preview": preview,
             "word_count": word_count,
             "segments": segments,
         }
+
+    def _load_virtual_theme_datasets(self) -> None:
+        for entry in self._theme_render_entries:
+            if not isinstance(entry, dict):
+                continue
+            label = str(entry.get("label") or "").strip()
+            if not label:
+                continue
+            slug = self._slugify(label)
+            if not slug or slug in self._theme_datasets_by_slug:
+                continue
+            theme = self._build_virtual_theme_dataset(entry)
+            if theme is None:
+                continue
+            self._theme_datasets.append(theme)
+            self._theme_datasets_by_slug[slug] = theme
+
+    def _build_virtual_theme_dataset(self, entry: dict[str, Any]) -> dict[str, Any] | None:
+        label = str(entry.get("label") or "").strip()
+        if not label:
+            return None
+
+        preferred_profile = str(entry.get("theme_profile") or "cartoon_kids")
+        theme_render = self._resolve_theme_render(
+            title=label,
+            source_text=str(entry.get("headline") or ""),
+            theme_profile_slug=preferred_profile,
+        )
+        featured_names = [
+            str(item.get("name") or "").strip()
+            for item in (theme_render.get("featured_cast") or [])
+            if isinstance(item, dict) and str(item.get("name") or "").strip()
+        ]
+        featured_background = (
+            theme_render.get("featured_background")
+            if isinstance(theme_render.get("featured_background"), dict)
+            else {}
+        )
+        segments = self._build_virtual_theme_segments(theme_render)
+        if not segments:
+            return None
+
+        source_text = "\n\n".join(segments)
+        subject = self._infer_theme_subject(label, source_text)
+        recommended_style = self._infer_theme_style(label, subject, source_text)
+        theme_profile = self._resolve_theme_profile(
+            theme_meta=None,
+            requested_style=recommended_style,
+            title=label,
+            source_text=source_text,
+        )
+        render_profile_slug = str(theme_render.get("theme_profile") or "")
+        if render_profile_slug in self._theme_profiles_by_slug:
+            theme_profile = self._default_theme_profile(render_profile_slug)
+
+        preview_source = str(theme_render.get("headline") or segments[0])
+        preview = textwrap.shorten(preview_source, width=240, placeholder="...")
+        word_count = sum(len(segment.split()) for segment in segments)
+        return {
+            "slug": self._slugify(label),
+            "title": label,
+            "subject": subject,
+            "recommended_style": recommended_style,
+            "theme_profile": theme_profile["slug"],
+            "theme_profile_label": theme_profile["label"],
+            "theme_character_hint": ", ".join(featured_names) or theme_profile.get("character_summary", ""),
+            "theme_background_hint": str(
+                featured_background.get("name") or theme_profile.get("background_summary", "")
+            ),
+            "font_label": theme_profile.get("font_label", ""),
+            "layout_label": theme_profile.get("layout_label", ""),
+            "ui_display_font": theme_profile.get("ui_display_font", "\"Bangers\", cursive"),
+            "ui_body_font": theme_profile.get("ui_body_font", "\"Comic Neue\", cursive"),
+            "theme_accent": (theme_render.get("ui") or {}).get("accent", theme_profile.get("accent", "#f4631e")),
+            "theme_surface": (theme_render.get("ui") or {}).get("surface", theme_profile.get("surface", "#ffffff")),
+            "theme_render": theme_render,
+            "preview": preview,
+            "word_count": word_count,
+            "segments": segments,
+            "is_virtual_theme": True,
+        }
+
+    def _build_virtual_theme_segments(self, theme_render: dict[str, Any]) -> list[str]:
+        label = str(theme_render.get("label") or "Theme").strip() or "Theme"
+        cast = [
+            item
+            for item in (theme_render.get("featured_cast") or [])
+            if isinstance(item, dict) and str(item.get("name") or "").strip()
+        ]
+        cast_names = ", ".join(str(item.get("name") or "").strip() for item in cast[:3])
+        comic_elements = [
+            str(item).strip()
+            for item in (theme_render.get("comic_elements") or [])
+            if str(item).strip()
+        ]
+        background = theme_render.get("featured_background") if isinstance(theme_render.get("featured_background"), dict) else {}
+        background_name = str(background.get("name") or "Comic Stage").strip() or "Comic Stage"
+        background_description = str(background.get("description") or "A signature comic environment designed for this theme.").strip()
+        headline = str(
+            theme_render.get("headline")
+            or f"{label} swaps in its own featured cast, background, and comic energy."
+        ).strip()
+        badge_text = str(theme_render.get("badge_text") or "Theme Pulse").strip() or "Theme Pulse"
+
+        segments = [
+            self._clean_theme_text(
+                f"{label} theme overview. {headline} The dashboard badge reads {badge_text}. "
+                f"The featured cast includes {cast_names or 'signature comic heroes'}."
+            ),
+            self._clean_theme_text(
+                f"The signature setting is {background_name}. {background_description} "
+                f"Comic panels emphasize {', '.join(comic_elements[:4]) or 'dynamic caption boxes and energetic panel framing'}."
+            ),
+        ]
+
+        for member in cast[:3]:
+            name = str(member.get("name") or "").strip()
+            description = str(member.get("description") or "").strip()
+            costume = member.get("costume") if isinstance(member.get("costume"), dict) else {}
+            accessory = str(costume.get("accessory") or "comic signature gear").strip()
+            if not name:
+                continue
+            segments.append(
+                self._clean_theme_text(
+                    f"{name} appears as a featured {label} character. "
+                    f"{description or 'The character carries the signature mood of the selected theme.'} "
+                    f"Signature detail: {accessory}."
+                )
+            )
+
+        return [segment for segment in segments if len(segment.split()) >= 8]
 
     @staticmethod
     def _theme_sort_key(key: Any) -> tuple[int, Any]:
@@ -1357,6 +1512,10 @@ class CominoteEngine:
         self._theme_keyword_rules = keyword_rules if isinstance(keyword_rules, list) else []
         style_rules = profile_data.get("style_rules") if isinstance(profile_data, dict) else {}
         self._theme_style_rules = style_rules if isinstance(style_rules, dict) else {}
+        render_data = self._load_dataset_json("theme_character_manifest.json")
+        self._theme_render_default = render_data.get("default") if isinstance(render_data, dict) else {}
+        render_entries = render_data.get("themes") if isinstance(render_data, dict) else []
+        self._theme_render_entries = render_entries if isinstance(render_entries, list) else []
         self._dataset_characters = self._load_dataset_records("characters.json", "characters")
         self._dataset_backgrounds = self._load_dataset_records("backgrounds.json", "backgrounds")
         self._dataset_emotions = self._load_dataset_records("emotions.json", "emotions")
@@ -1386,6 +1545,356 @@ class CominoteEngine:
         data = self._load_dataset_json(filename)
         records = data.get(key)
         return records if isinstance(records, list) else []
+
+    @staticmethod
+    def _merge_dicts(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+        merged = dict(base)
+        for key, value in override.items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = CominoteEngine._merge_dicts(merged[key], value)
+            else:
+                merged[key] = value
+        return merged
+
+    def _theme_render_ui_defaults(self, theme_profile_slug: str) -> dict[str, str]:
+        defaults = {
+            "anime": {
+                "accent": "#ff5fa2",
+                "accent_2": "#6c5ce7",
+                "accent_3": "#00b4d8",
+                "surface": "#fff4fb",
+                "bg_start": "#fff5fb",
+                "bg_end": "#e7eeff",
+                "glow": "rgba(255, 95, 162, 0.2)",
+            },
+            "pixar": {
+                "accent": "#ff8744",
+                "accent_2": "#20b2aa",
+                "accent_3": "#5e60ce",
+                "surface": "#fff7ef",
+                "bg_start": "#fff6ed",
+                "bg_end": "#eefbff",
+                "glow": "rgba(255, 135, 68, 0.18)",
+            },
+            "superhero": {
+                "accent": "#ea233f",
+                "accent_2": "#0f52ba",
+                "accent_3": "#ffd447",
+                "surface": "#fff1ef",
+                "bg_start": "#fff1ef",
+                "bg_end": "#eef3ff",
+                "glow": "rgba(234, 35, 63, 0.18)",
+            },
+            "cartoon_kids": {
+                "accent": "#fb5607",
+                "accent_2": "#ffb703",
+                "accent_3": "#2ec4b6",
+                "surface": "#fff8dd",
+                "bg_start": "#fff8dd",
+                "bg_end": "#edfff2",
+                "glow": "rgba(255, 183, 3, 0.2)",
+            },
+            "manga": {
+                "accent": "#232323",
+                "accent_2": "#575757",
+                "accent_3": "#a0a0a0",
+                "surface": "#f2f2f2",
+                "bg_start": "#fafafa",
+                "bg_end": "#dcdcdc",
+                "glow": "rgba(35, 35, 35, 0.1)",
+            },
+            "fantasy": {
+                "accent": "#7d4dff",
+                "accent_2": "#2dd4bf",
+                "accent_3": "#facc15",
+                "surface": "#f8f2ff",
+                "bg_start": "#f8f2ff",
+                "bg_end": "#ecfbf7",
+                "glow": "rgba(125, 77, 255, 0.16)",
+            },
+        }
+        return dict(defaults.get(theme_profile_slug, defaults["cartoon_kids"]))
+
+    def _theme_render_comic_elements(self, theme_profile_slug: str) -> list[str]:
+        defaults = {
+            "anime": ["speed lines", "spark bursts", "hero captions"],
+            "pixar": ["soft glows", "rounded bubbles", "story cards"],
+            "superhero": ["impact bursts", "city motion", "bold captions"],
+            "cartoon_kids": ["halftone dots", "playful bubbles", "bright stickers"],
+            "manga": ["ink speed lines", "dramatic boxes", "tone textures"],
+            "fantasy": ["glow runes", "quest frames", "magic trails"],
+        }
+        return list(defaults.get(theme_profile_slug, defaults["cartoon_kids"]))
+
+    def _default_theme_render(self, theme_profile_slug: str = "cartoon_kids") -> dict[str, Any]:
+        profile = self._default_theme_profile(theme_profile_slug)
+        ui = self._theme_render_ui_defaults(str(profile.get("slug") or theme_profile_slug))
+        ui["accent"] = self._safe_hex(profile.get("accent"), ui["accent"])
+        ui["surface"] = self._safe_hex(profile.get("surface"), ui["surface"])
+        base = self._theme_render_default if isinstance(self._theme_render_default, dict) else {}
+        return self._merge_dicts(
+            base,
+            {
+                "id": str(base.get("id") or "theme-explorer"),
+                "label": str(base.get("label") or profile.get("label") or "Theme Explorer"),
+                "badge_text": str(base.get("badge_text") or "Comic Preview"),
+                "headline": str(base.get("headline") or profile.get("description") or "Select a theme to preview it."),
+                "sound_effect": str(base.get("sound_effect") or "POP!"),
+                "theme_profile": str(profile.get("slug") or theme_profile_slug),
+                "ui": ui,
+                "comic_elements": list(base.get("comic_elements") or self._theme_render_comic_elements(str(profile.get("slug") or theme_profile_slug))),
+            },
+        )
+
+    def _theme_render_match_score(self, entry: dict[str, Any], blob: str) -> int:
+        score = 0
+        keywords = [str(keyword).strip().lower() for keyword in (entry.get("keywords") or []) if str(keyword).strip()]
+        for keyword in keywords:
+            if keyword and keyword in blob:
+                score += max(3, len(keyword.split()) * 6)
+        label = str(entry.get("label") or "").strip().lower()
+        if label and label in blob:
+            score += max(10, len(label.split()) * 8)
+        return score
+
+    def _pick_theme_anchor(self, title: str) -> str:
+        tokens = [
+            token
+            for token in re.findall(r"[A-Za-z0-9]+", title)
+            if len(token) > 2 and token.lower() not in FALLBACK_STOPWORDS
+        ]
+        generic = {"theme", "story", "comic", "book", "journey", "great", "lord", "west", "things"}
+        refined = [token for token in tokens if token.lower() not in generic] or tokens
+        if not refined:
+            return "Theme"
+        return max(refined, key=len).title()
+
+    def _synthesise_theme_render(self, title: str, theme_profile_slug: str) -> dict[str, Any]:
+        profile_slug = theme_profile_slug or "cartoon_kids"
+        ui = self._theme_render_ui_defaults(profile_slug)
+        anchor = self._pick_theme_anchor(title)
+        digest = hashlib.md5(f"{title}|{profile_slug}".encode("utf-8")).hexdigest()
+        tint = int(digest[:2], 16)
+        accent_mix = (
+            min(255, int(ui["accent"][1:3], 16) + tint // 8),
+            min(255, int(ui["accent"][3:5], 16) + tint // 10),
+            min(255, int(ui["accent"][5:7], 16) + tint // 12),
+        )
+        accent = _rgb_to_hex(accent_mix)
+        profile_map = {
+            "anime": ("Blaze", "anime-hero", "student", "academy jacket", "hero trousers", "energy band", "comic runners", "Anime"),
+            "pixar": ("Buddy", "cartoon-pal", "student", "soft hoodie", "rounded trousers", "story satchel", "comic sneakers", "Pixar"),
+            "superhero": ("Sentinel", "hero-guardian", "teacher", "hero jacket", "powered leggings", "comic emblem", "hero boots", "Hero"),
+            "manga": ("Echo", "manga-hero", "student", "ink-lined coat", "dramatic trousers", "speed scarf", "comic boots", "Manga"),
+            "fantasy": ("Quest", "fantasy-ranger", "student", "travel cloak", "quest trousers", "rune compass", "trail boots", "Fantasy"),
+            "cartoon_kids": ("Spark", "explorer", "student", "playful tee", "adventure pants", "story badge", "comic sneakers", "Story"),
+        }
+        suffix, variant, category, top, bottom, accessory, shoes, badge = profile_map.get(
+            profile_slug,
+            profile_map["cartoon_kids"],
+        )
+        return {
+            "id": f"generated-{self._slugify(title) or 'theme'}",
+            "label": title,
+            "badge_text": f"{badge} Mode",
+            "headline": f"{title} now has its own live character preview, palette, and comic setup.",
+            "sound_effect": "WOW!",
+            "theme_profile": profile_slug,
+            "ui": {
+                **ui,
+                "accent": accent,
+            },
+            "comic_elements": self._theme_render_comic_elements(profile_slug),
+            "featured_cast": [
+                {
+                    "name": f"{anchor} {suffix}",
+                    "description": f"The signature {profile_slug.replace('_', ' ')} guide for {title}.",
+                    "variant": variant,
+                    "category": category,
+                    "palette": {
+                        "hair": "#47311f",
+                        "skin": "#efc39b",
+                        "costume_primary": accent,
+                        "costume_accent": ui["accent_2"],
+                        "eye": ui["accent_3"],
+                    },
+                    "costume": {
+                        "top": top,
+                        "bottom": bottom,
+                        "accessory": accessory,
+                        "shoes": shoes,
+                    },
+                    "tags": [self._slugify(title), profile_slug, "theme-generated", "preview"],
+                }
+            ],
+            "featured_background": {
+                "name": f"{anchor} Realm",
+                "description": f"A {profile_slug.replace('_', ' ')} environment tuned for {title}.",
+                "category": "theme_world",
+                "prompt_fragment": f"{profile_slug.replace('_', ' ')} themed story world for {title}, comic depth, bright panels",
+                "palette": {
+                    "primary": ui["bg_start"],
+                    "secondary": ui["bg_end"],
+                    "accent": accent,
+                    "floor": "#8b5e3c",
+                },
+                "tags": [self._slugify(title), profile_slug, "theme-world"],
+            },
+        }
+
+    def _resolve_theme_render(
+        self,
+        *,
+        theme_meta: dict[str, Any] | None = None,
+        title: str = "",
+        source_text: str = "",
+        theme_profile_slug: str = "",
+    ) -> dict[str, Any]:
+        explicit = (theme_meta or {}).get("theme_render")
+        if isinstance(explicit, dict) and explicit.get("id"):
+            profile_slug = str(
+                explicit.get("theme_profile")
+                or theme_profile_slug
+                or (theme_meta or {}).get("theme_profile")
+                or "cartoon_kids"
+            )
+            base = self._default_theme_render(profile_slug)
+            merged = self._merge_dicts(base, explicit)
+            merged["theme_profile"] = profile_slug
+            return merged
+
+        title_blob = " ".join(
+            part
+            for part in (
+                title,
+                (theme_meta or {}).get("title", ""),
+                (theme_meta or {}).get("slug", ""),
+            )
+            if part
+        ).lower()
+        content_blob = source_text[:1600].lower() if not title_blob.strip() else ""
+        best_entry: dict[str, Any] | None = None
+        best_score = 0
+        for entry in self._theme_render_entries:
+            if not isinstance(entry, dict):
+                continue
+            score = self._theme_render_match_score(entry, title_blob) * 4
+            if score == 0 and content_blob:
+                score = self._theme_render_match_score(entry, content_blob)
+            if score > best_score:
+                best_score = score
+                best_entry = entry
+
+        resolved_profile = str(
+            (best_entry or {}).get("theme_profile")
+            or theme_profile_slug
+            or (theme_meta or {}).get("theme_profile")
+            or "cartoon_kids"
+        )
+        base = self._default_theme_render(resolved_profile)
+        if best_entry:
+            merged = self._merge_dicts(base, best_entry)
+            merged["theme_profile"] = resolved_profile
+            return merged
+        if title or (theme_meta or {}).get("title"):
+            synthesized = self._synthesise_theme_render(title or str((theme_meta or {}).get("title") or ""), resolved_profile)
+            merged = self._merge_dicts(base, synthesized)
+            merged["theme_profile"] = resolved_profile
+            return merged
+        return base
+
+    def _build_theme_cast_records(self, theme_render: dict[str, Any], theme_profile_slug: str) -> list[dict[str, Any]]:
+        featured = theme_render.get("featured_cast") or []
+        if not isinstance(featured, list):
+            return []
+        ui = theme_render.get("ui") or {}
+        records: list[dict[str, Any]] = []
+        for index, entry in enumerate(featured):
+            if not isinstance(entry, dict):
+                continue
+            name = str(entry.get("name") or "").strip()
+            if not name:
+                continue
+            palette = entry.get("palette") or {}
+            record = {
+                "id": f"THEME_{self._slugify(str(theme_render.get('id') or name))}_{index}",
+                "name": name,
+                "category": str(entry.get("category") or "student"),
+                "sub_type": str(entry.get("variant") or theme_profile_slug or "theme_character"),
+                "source": "theme_manifest",
+                "theme_fit": [theme_profile_slug] if theme_profile_slug else [],
+                "subject_fit": ["all"],
+                "image_prompt": str(entry.get("description") or f"{name} themed comic character"),
+                "tags": list(dict.fromkeys([
+                    *(entry.get("tags") or []),
+                    str(theme_render.get("id") or ""),
+                    str(theme_render.get("label") or ""),
+                    theme_profile_slug,
+                    "theme-manifest",
+                ])),
+                "palette": {
+                    "hair": self._safe_hex(palette.get("hair"), "#47311f"),
+                    "skin": self._safe_hex(palette.get("skin"), "#efc39b"),
+                    "costume_primary": self._safe_hex(palette.get("costume_primary"), self._safe_hex(ui.get("accent"), "#f4631e")),
+                    "costume_accent": self._safe_hex(palette.get("costume_accent"), self._safe_hex(ui.get("accent_2"), "#ffd93d")),
+                    "eye": self._safe_hex(palette.get("eye"), self._safe_hex(ui.get("accent_3"), "#1e6fd9")),
+                },
+                "costume": entry.get("costume") or {},
+                "render_variant": str(entry.get("variant") or ""),
+            }
+            records.append(record)
+        return records
+
+    def _build_theme_background_records(self, theme_render: dict[str, Any], theme_profile_slug: str) -> list[dict[str, Any]]:
+        background = theme_render.get("featured_background")
+        if not isinstance(background, dict):
+            return []
+        ui = theme_render.get("ui") or {}
+        palette = background.get("palette") or {}
+        return [
+            {
+                "id": f"THEME_BG_{self._slugify(str(theme_render.get('id') or background.get('name') or 'theme'))}",
+                "name": str(background.get("name") or "Theme World"),
+                "category": str(background.get("category") or "theme_world"),
+                "source": "theme_manifest",
+                "theme_fit": [theme_profile_slug] if theme_profile_slug else [],
+                "subject_fit": ["all"],
+                "prompt_fragment": str(background.get("prompt_fragment") or background.get("description") or "themed comic background"),
+                "palette": {
+                    "primary": self._safe_hex(palette.get("primary"), self._safe_hex(ui.get("bg_start"), "#fff8dd")),
+                    "secondary": self._safe_hex(palette.get("secondary"), self._safe_hex(ui.get("bg_end"), "#edfff2")),
+                    "accent": self._safe_hex(palette.get("accent"), self._safe_hex(ui.get("accent"), "#f4631e")),
+                    "floor": self._safe_hex(palette.get("floor"), "#8b5e3c"),
+                },
+                "tags": list(dict.fromkeys([
+                    *(background.get("tags") or []),
+                    str(theme_render.get("id") or ""),
+                    theme_profile_slug,
+                    "theme-manifest",
+                ])),
+            }
+        ]
+
+    @staticmethod
+    def _prioritise_theme_records(
+        featured: list[dict[str, Any]],
+        existing: list[dict[str, Any]],
+        limit: int,
+        *,
+        unique_key: str = "id",
+    ) -> list[dict[str, Any]]:
+        merged: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for source in (featured, existing):
+            for record in source:
+                record_key = str(record.get(unique_key) or record.get("name") or "")
+                if not record_key or record_key in seen:
+                    continue
+                merged.append(record)
+                seen.add(record_key)
+                if len(merged) >= limit:
+                    return merged
+        return merged
 
     def _default_theme_profile(self, slug: str = "cartoon_kids") -> dict[str, Any]:
         fallback = self._theme_profiles_by_slug.get(slug) or self._theme_profiles_by_slug.get("cartoon_kids")
@@ -1987,11 +2496,24 @@ class CominoteEngine:
         base_style_record = self._dataset_styles_by_name.get(dataset_style, {"name": dataset_style, "label": dataset_style.replace("_", " ").title()})
         style_record = {**theme_profile, **base_style_record}
         theme_profile_slug = str(theme_profile.get("slug") or "")
+        theme_render = self._resolve_theme_render(
+            theme_meta=theme_meta,
+            title=title,
+            theme_profile_slug=theme_profile_slug,
+        )
+        theme_cast = self._build_theme_cast_records(theme_render, theme_profile_slug)
+        theme_backgrounds = self._build_theme_background_records(theme_render, theme_profile_slug)
         rng = self._seeded_rng(title, subject, dataset_style, theme_profile_slug, len(scenes))
         dataset_cast = self._assemble_dataset_cast(subject, len(scenes), theme_profile_slug, rng)
         archive_cast = self._assemble_archive_cast(subject, len(scenes), theme_profile_slug, rng)
         cast = self._merge_casts(dataset_cast, archive_cast, len(scenes), cast_mode, dataset_style, theme_profile_slug)
+        cast = self._prioritise_theme_records(theme_cast, cast, min(4, max(2, len(scenes))))
         backgrounds = self._assemble_dataset_backgrounds(subject, len(scenes), theme_profile_slug, rng)
+        backgrounds = self._prioritise_theme_records(
+            theme_backgrounds,
+            backgrounds,
+            max(1, min(max(len(scenes), 3), 6)),
+        )
         emotions = self._emotion_sequence(len(scenes))
 
         panels = []
@@ -2025,6 +2547,7 @@ class CominoteEngine:
             "panels": panels,
             "cast_mode": cast_mode,
             "theme_profile": theme_profile,
+            "theme_render": theme_render,
             "cast_sources": sorted({(panel.get("character") or {}).get("source", "dataset") for panel in panels}),
         }
 
@@ -2083,52 +2606,44 @@ class CominoteEngine:
             return boxes[:panel_count]
 
         if panel_count <= 1:
-            return [(margin, 0, content_w, 720, 0)]
+            return [(margin, 0, content_w, 480, 0)]
         if panel_count == 2:
             return [
-                (margin, 0, half_w, 620, 0),
-                (margin + half_w + gutter, 0, half_w, 620, 1),
+                (margin, 0, half_w, 360, 0),
+                (margin + half_w + gutter, 0, half_w, 360, 1),
             ]
         if panel_count == 3:
-            top_h = 360
-            bottom_h = 320
             return [
-                (margin, 0, content_w, top_h, 0),
-                (margin, top_h + gutter, half_w, bottom_h, 1),
-                (margin + half_w + gutter, top_h + gutter, half_w, bottom_h, 2),
+                (margin, 0, half_w, 320, 0),
+                (margin + half_w + gutter, 0, half_w, 320, 1),
+                (margin, 320 + gutter, half_w, 320, 2),
             ]
         if panel_count == 4:
-            row_h = 340 if layout_style == "action_splash" else 320
             return [
-                (margin, 0, half_w, row_h, 0),
-                (margin + half_w + gutter, 0, half_w, row_h, 1),
-                (margin, row_h + gutter, half_w, row_h, 2),
-                (margin + half_w + gutter, row_h + gutter, half_w, row_h, 3),
+                (margin, 0, half_w, 320, 0),
+                (margin + half_w + gutter, 0, half_w, 320, 1),
+                (margin, 320 + gutter, half_w, 320, 2),
+                (margin + half_w + gutter, 320 + gutter, half_w, 320, 3),
             ]
         if panel_count == 5:
-            side_w = 360 if layout_style == "action_splash" else 350
-            side_h = 240
-            center_w = 920 if layout_style == "action_splash" else 880
-            center_h = 410 if layout_style == "action_splash" else 390
-            center_x = margin + (content_w - center_w) // 2
-            right_x = margin + content_w - side_w
             return [
-                (margin, 0, side_w, side_h, 0),
-                (right_x, 0, side_w, side_h, 1),
-                (center_x, side_h + gutter, center_w, center_h, 2),
-                (margin, side_h + gutter + center_h + gutter, side_w, side_h, 3),
-                (right_x, side_h + gutter + center_h + gutter, side_w, side_h, 4),
+                (margin, 0, half_w, 320, 0),
+                (margin + half_w + gutter, 0, half_w, 320, 1),
+                (margin, 320 + gutter, half_w, 320, 2),
+                (margin + half_w + gutter, 320 + gutter, half_w, 320, 3),
+                (margin, 640 + gutter * 2, half_w, 320, 4),
             ]
 
-        top_h = 300 if layout_style == "action_splash" else 280
-        mid_h = 270 if layout_style == "action_splash" else 250
-        bot_h = 250 if layout_style == "action_splash" else 230
-        boxes.append((margin, 0, content_w, top_h, 0))
-        boxes.append((margin, top_h + gutter, half_w, mid_h, 1))
-        boxes.append((margin + half_w + gutter, top_h + gutter, half_w, mid_h, 2))
-        bottom_y = top_h + gutter + mid_h + gutter
-        for index in range(3):
-            boxes.append((margin + index * (third_w + gutter), bottom_y, third_w, bot_h, index + 3))
+        # Uniform 2-column grid layout for better organization
+        panel_h = 320
+        row = 0
+        for index in range(panel_count):
+            col = index % 2
+            lx = margin + col * (half_w + gutter)
+            ly = row * (panel_h + gutter)
+            boxes.append((lx, ly, half_w, panel_h, index))
+            if col == 1:
+                row += 1
         return boxes
 
     def _panel_theme(self, page_palette: dict[str, str], visual: dict[str, Any]) -> dict[str, str]:
