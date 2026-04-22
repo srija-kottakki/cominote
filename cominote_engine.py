@@ -2836,11 +2836,14 @@ class CominoteEngine:
         body_family = str(style_record.get("body_font_family") or "sans")
         effect_family = str(style_record.get("effect_font_family") or title_family)
         bubble_type = str((visual.get("bubble") or {}).get("type") or "normal").lower()
-        panel_radius = 12 if layout_style == "manga_cascade" else 24
-        shadow_offset = 10
-        draw.rounded_rectangle((px + shadow_offset, py + shadow_offset, px + pw + shadow_offset, py + ph + shadow_offset), radius=panel_radius, fill="#111111")
+        panel_radius = 12 if layout_style == "manga_cascade" else 20  # Consistent, polished corners
+        shadow_offset = 8  # Subtle shadow
+        # Refined shadow for depth
+        draw.rounded_rectangle((px + shadow_offset, py + shadow_offset, px + pw + shadow_offset, py + ph + shadow_offset), radius=panel_radius, fill="#11111122")
+        # Clean gradient background
         self._gradient_rect(img, px, py, px + pw, py + ph, panel_theme["surface"], panel_theme["surface_alt"])
-        self._draw_page_halftone(draw, px + 6, py + 6, px + pw - 6, py + ph - 6, panel_theme["accent_alt"], density=16, dot_r=2, opacity=0.08)
+        # Reduced halftone for cleaner look
+        self._draw_page_halftone(draw, px + 6, py + 6, px + pw - 6, py + ph - 6, panel_theme["accent_alt"], density=12, dot_r=1.5, opacity=0.05)
         self._draw_dataset_background(
             draw,
             img,
@@ -2853,16 +2856,20 @@ class CominoteEngine:
             theme_profile,
         )
 
-        draw.rounded_rectangle((px, py, px + pw, py + ph), radius=panel_radius, outline="#111111", width=8)
-        draw.rounded_rectangle((px + 8, py + 8, px + pw - 8, py + ph - 8), radius=max(8, panel_radius - 6), outline=panel_theme["accent"], width=3)
+        # Polished panel borders - consistent styling
+        draw.rounded_rectangle((px, py, px + pw, py + ph), radius=panel_radius, outline="#111111", width=6)
+        draw.rounded_rectangle((px + 6, py + 6, px + pw - 6, py + ph - 6), radius=max(6, panel_radius - 4), outline=panel_theme["accent"], width=2)
 
         header_h = 48 if ph >= 260 else 40
+        # Smooth header gradient
         self._gradient_rect(img, px + 4, py + 4, px + pw - 4, py + header_h, panel_theme["accent"], panel_theme["accent_alt"], vertical=False)
-        draw.rounded_rectangle((px + 4, py + 4, px + pw - 4, py + header_h), radius=max(8, panel_radius - 6), outline="#111111", width=2)
-        draw.line([(px + 6, py + header_h), (px + pw - 6, py + header_h)], fill="#111111", width=3)
+        draw.rounded_rectangle((px + 4, py + 4, px + pw - 4, py + header_h), radius=max(6, panel_radius - 4), outline="#111111", width=2)
+        # Clean header separator
+        draw.line([(px + 6, py + header_h), (px + pw - 6, py + header_h)], fill="#111111", width=2)
 
-        badge_font = self._font(18, bold=True, family=body_family)
-        draw.ellipse((px + 16, py + 10, px + 52, py + 46), fill="#ffffff", outline="#111111", width=3)
+        badge_font = self._font(16, bold=True, family=body_family)
+        # Centered panel number badge
+        draw.ellipse((px + 18, py + 12, px + 50, py + 44), fill="#ffffff", outline="#111111", width=2)
         draw.text((px + 34, py + 28), str(index + 1), font=badge_font, fill=panel_theme["accent"], anchor="mm")
         inner_x1 = px + 14
         inner_x2 = px + pw - 14
@@ -2914,56 +2921,56 @@ class CominoteEngine:
 
         wide_layout = pw >= 560 or (layout_style == "cinematic_grid" and pw >= 500) or (layout_style == "action_splash" and pw >= 480)
         if wide_layout:
-            char_x = inner_x1 + 6
-            char_w = self._clamp(int(pw * 0.28), 170, 250)
-            gap = 18
+            char_x = inner_x1 + 8
+            char_w = self._clamp(int(pw * 0.26), 140, 220)
+            gap = 16
             bubble_x1 = char_x + char_w + gap
-            bubble_x2 = inner_x2
-            bubble_y1 = content_top + 8
-            bubble_max_height = self._clamp(int((content_bottom - content_top) * 0.5), 90, 170)
+            bubble_x2 = inner_x2 - 4
+            bubble_y1 = content_top + 6
+            bubble_max_height = self._clamp(int((content_bottom - content_top) * 0.48), 88, 160)
             dialogue_preview, dialogue_font = self._fit_text_block(
                 draw,
                 scene.dialogue,
-                max(70, bubble_x2 - bubble_x1 - 30),
-                bubble_max_height - 24,
-                start_size=20 if layout_style == "action_splash" else 18,
+                max(70, bubble_x2 - bubble_x1 - 32),
+                bubble_max_height - 28,
+                start_size=16 if layout_style == "action_splash" else 15,
                 min_size=10,
                 bold=bubble_type in {"shouting", "action_burst"},
                 family=body_family,
-                spacing=5,
-                max_lines=5 if bubble_max_height > 120 else 4,
+                spacing=4,
+                max_lines=4 if bubble_max_height > 120 else 3,
             )
-            _, dialogue_text_h = self._text_size(draw, dialogue_preview, dialogue_font, spacing=5)
-            bubble_height = self._clamp(dialogue_text_h + 30, 82, bubble_max_height)
+            _, dialogue_text_h = self._text_size(draw, dialogue_preview, dialogue_font, spacing=4)
+            bubble_height = self._clamp(dialogue_text_h + 32, 80, bubble_max_height)
             bubble_y2 = bubble_y1 + bubble_height
-            char_y = content_top + 10
-            char_h = max(70, content_bottom - char_y - 4)
-            name_y1 = content_bottom - 26
+            char_y = content_top + 8
+            char_h = max(68, content_bottom - char_y - 6)
+            name_y1 = content_bottom - 24
         else:
-            bubble_x1 = inner_x1
-            bubble_x2 = inner_x2
-            bubble_y1 = content_top
-            bubble_max_height = self._clamp(int((content_bottom - content_top) * 0.42), 68, 122)
+            bubble_x1 = inner_x1 + 4
+            bubble_x2 = inner_x2 - 4
+            bubble_y1 = content_top + 4
+            bubble_max_height = self._clamp(int((content_bottom - content_top) * 0.4), 66, 118)
             dialogue_preview, dialogue_font = self._fit_text_block(
                 draw,
                 scene.dialogue,
-                max(60, bubble_x2 - bubble_x1 - 30),
-                bubble_max_height - 22,
-                start_size=17 if ph >= 260 else 15,
+                max(60, bubble_x2 - bubble_x1 - 32),
+                bubble_max_height - 24,
+                start_size=14 if ph >= 260 else 13,
                 min_size=9,
                 bold=bubble_type in {"shouting", "action_burst"},
                 family=body_family,
-                spacing=5,
-                max_lines=4 if ph >= 260 else 3 if ph >= 220 else 2,
+                spacing=4,
+                max_lines=3 if ph >= 260 else 2,
             )
-            _, dialogue_text_h = self._text_size(draw, dialogue_preview, dialogue_font, spacing=5)
-            bubble_height = self._clamp(dialogue_text_h + 28, 58, bubble_max_height)
+            _, dialogue_text_h = self._text_size(draw, dialogue_preview, dialogue_font, spacing=4)
+            bubble_height = self._clamp(dialogue_text_h + 28, 56, bubble_max_height)
             bubble_y2 = bubble_y1 + bubble_height
-            char_x = inner_x1 + 10
-            char_w = max(90, pw - 52)
-            char_y = bubble_y2 + 14
-            char_h = max(48, content_bottom - char_y - 28)
-            name_y1 = min(content_bottom - 24, max(char_y + char_h - 18, bubble_y2 + 10))
+            char_x = inner_x1 + 8
+            char_w = max(88, pw - 48)
+            char_y = bubble_y2 + 12
+            char_h = max(46, content_bottom - char_y - 24)
+            name_y1 = content_bottom - 22
 
         self._draw_dataset_speech_bubble(
             draw,
@@ -2992,19 +2999,20 @@ class CominoteEngine:
         badge_label, badge_font = self._fit_text_block(
             draw,
             name_text.upper(),
-            max(90, pw - 86),
-            14,
-            start_size=12,
-            min_size=9,
+            max(90, pw - 82),
+            13,
+            start_size=11,
+            min_size=8,
             bold=True,
             family=body_family,
             max_lines=1,
         )
-        badge_w = self._text_size(draw, badge_label, badge_font)[0] + 20
+        badge_w = self._text_size(draw, badge_label, badge_font)[0] + 18
         badge_x1 = inner_x1
         badge_x2 = min(inner_x2, badge_x1 + badge_w)
-        draw.rounded_rectangle((badge_x1, name_y1, badge_x2, name_y1 + 22), radius=10, fill=panel_theme["accent"], outline="#111111", width=2)
-        draw.text((badge_x1 + 10, name_y1 + 4), badge_label, font=badge_font, fill="#ffffff")
+        draw.rounded_rectangle((badge_x1 + 2, name_y1 + 2, badge_x2 + 2, name_y1 + 20), radius=8, fill="#11111122")
+        draw.rounded_rectangle((badge_x1, name_y1, badge_x2, name_y1 + 20), radius=8, fill=panel_theme["accent"], outline="#111111", width=2)
+        draw.text((badge_x1 + 9, name_y1 + 2), badge_label, font=badge_font, fill="#ffffff")
 
         self._draw_dataset_caption(
             draw,
@@ -3158,7 +3166,7 @@ class CominoteEngine:
             return
         bubble_type = (bubble.get("type") or "normal").lower()
         fill = self._safe_hex(bubble.get("fill"), panel_theme["bubble"])
-        outline_width = 4 if bubble_type in {"shouting", "action_burst"} else 3
+        outline_width = 3 if bubble_type in {"shouting", "action_burst"} else 2  # Consistent, refined borders
         if bubble_type in {"shouting", "action_burst"}:
             cx = (x1 + x2) // 2
             cy = (y1 + y2) // 2
@@ -3180,30 +3188,34 @@ class CominoteEngine:
             draw.ellipse((x1 + 18, y2 + 6, x1 + 36, y2 + 24), fill=fill, outline="#111111", width=2)
             draw.ellipse((x1 + 36, y2 + 22, x1 + 48, y2 + 34), fill=fill, outline="#111111", width=2)
         else:
-            radius = 28 if bubble_type == "pixar_round" else 22
+            radius = 24 if bubble_type == "pixar_round" else 18  # Consistent rounded corners
             draw.rounded_rectangle((x1, y1, x2, y2), radius=radius, fill=fill, outline="#111111", width=outline_width)
-            draw.polygon([(x1 + 36, y2 - 2), (x1 + 76, y2 - 2), (x1 + 18, y2 + 34)], fill=fill, outline="#111111")
+            # Pointer tail
+            tail_points = [(x1 + 32, y2 - 2), (x1 + 64, y2 - 2), (x1 + 20, y2 + 30)]
+            draw.polygon(tail_points, fill=fill, outline="#111111", width=1)
 
+        # Consistent text padding and sizing
         bubble_w = x2 - x1
         bubble_h = y2 - y1
-        max_text_h = max(18, bubble_h - 26)
-        start_size = 18 if bubble_w > 300 else 15 if bubble_w > 180 else 12
+        max_text_h = max(20, bubble_h - 32)
+        start_size = 16 if bubble_w > 300 else 14 if bubble_w > 180 else 11
         wrapped, font = self._fit_text_block(
             draw,
             text,
-            max(40, bubble_w - 30),
+            max(40, bubble_w - 32),
             max_text_h,
             start_size=start_size,
-            min_size=10,
+            min_size=9,
             bold=bubble_type in {"shouting", "action_burst"},
             family=body_family,
-            spacing=5,
+            spacing=4,
             max_lines=4 if bubble_h > 96 else 3 if bubble_h > 72 else 2,
         )
-        text_w, text_h = self._text_size(draw, wrapped, font, spacing=5)
-        text_x = x1 + max(14, (bubble_w - text_w) // 2)
-        text_y = y1 + max(10, (bubble_h - text_h) // 2 - 2)
-        draw.multiline_text((text_x, text_y), wrapped, font=font, fill="#111111", spacing=5)
+        text_w, text_h = self._text_size(draw, wrapped, font, spacing=4)
+        # Centered text with uniform padding
+        text_x = x1 + max(16, (bubble_w - text_w) // 2)
+        text_y = y1 + max(12, (bubble_h - text_h) // 2)
+        draw.multiline_text((text_x, text_y), wrapped, font=font, fill="#111111", spacing=4)
 
     def _draw_dataset_caption(
         self,
@@ -3216,24 +3228,29 @@ class CominoteEngine:
         panel_theme: dict[str, str],
         body_family: str = "sans",
     ) -> None:
-        draw.rounded_rectangle((x1 + 4, y1 + 4, x2 + 4, y2 + 4), radius=14, fill="#11111133")
-        draw.rounded_rectangle((x1, y1, x2, y2), radius=14, fill=panel_theme["caption"], outline="#111111", width=3)
-        draw.rectangle((x1, y1, x1 + 10, y2), fill=panel_theme["accent"])
-        label_font = self._font(11, bold=True, family=body_family)
-        draw.text((x1 + 18, y1 + 6), "NARRATOR", font=label_font, fill=panel_theme["caption_text"])
+        # Subtle shadow for depth
+        draw.rounded_rectangle((x1 + 3, y1 + 3, x2 + 3, y2 + 3), radius=12, fill="#11111118")
+        # Polished caption box
+        draw.rounded_rectangle((x1, y1, x2, y2), radius=12, fill=panel_theme["caption"], outline="#111111", width=2)
+        # Clean accent stripe
+        draw.rectangle((x1, y1, x1 + 8, y2), fill=panel_theme["accent"])
+        # Consistent narrator label
+        label_font = self._font(10, bold=True, family=body_family)
+        draw.text((x1 + 14, y1 + 5), "NARRATOR", font=label_font, fill=panel_theme["caption_text"])
+        # Properly sized and padded caption text
         wrapped, cap_font = self._fit_text_block(
             draw,
             caption,
             max(60, x2 - x1 - 28),
-            max(18, y2 - y1 - 28),
-            start_size=13,
-            min_size=10,
+            max(18, y2 - y1 - 30),
+            start_size=12,
+            min_size=9,
             bold=True,
             family=body_family,
-            spacing=4,
+            spacing=3,
             max_lines=3 if (y2 - y1) >= 74 else 2 if (y2 - y1) >= 54 else 1,
         )
-        draw.multiline_text((x1 + 18, y1 + 23), wrapped, font=cap_font, fill="#111111", spacing=4)
+        draw.multiline_text((x1 + 14, y1 + 19), wrapped, font=cap_font, fill="#111111", spacing=3)
 
     @staticmethod
     def _mono_hex(hex_color: str, contrast: float = 0.0) -> str:
@@ -3694,8 +3711,8 @@ class CominoteEngine:
         palette = STYLE_LIBRARY[visual_plan["palette_style"]]
         style_record = visual_plan["style"]
         layout_style = str(style_record.get("layout_style") or visual_plan["theme_profile"].get("layout_style") or "balanced_grid")
-        margin = 34
-        gutter = 20
+        margin = 36  # Consistent outer margin
+        gutter = 24  # Increased gutter for better breathing room
         layout = self._layout_boxes(len(scenes), margin, gutter, layout_style)
         max_x = max(lx + lw for lx, ly, lw, lh, _ in layout)
         max_y = max(ly + lh for lx, ly, lw, lh, _ in layout)
@@ -3705,11 +3722,13 @@ class CominoteEngine:
 
         img = Image.new("RGB", (width, height), _hex_to_rgb(palette["page"]))
         draw = ImageDraw.Draw(img)
+        # Smooth gradient background with reduced visual noise
         self._gradient_rect(img, 0, 0, width, height, palette["panel_bot"], palette["sky_bot"])
-        self._draw_page_halftone(draw, 0, 0, width, height, palette["accent"], density=18, dot_r=2, opacity=0.08)
-        self._draw_speed_lines(draw, width // 2, height // 2, width, height, palette["accent"], count=24, opacity=0.04)
-        draw.rounded_rectangle((6, 6, width - 6, height - 6), radius=30, outline="#111111", width=8)
-        draw.rounded_rectangle((14, 14, width - 14, height - 14), radius=26, outline=palette["accent"], width=3)
+        self._draw_page_halftone(draw, 0, 0, width, height, palette["accent"], density=14, dot_r=2, opacity=0.04)
+        self._draw_speed_lines(draw, width // 2, height // 2, width, height, palette["accent"], count=16, opacity=0.02)
+        # Polished page border
+        draw.rounded_rectangle((6, 6, width - 6, height - 6), radius=30, outline="#111111", width=6)
+        draw.rounded_rectangle((12, 12, width - 12, height - 12), radius=26, outline=palette["accent"], width=2)
         self._draw_dataset_title_banner(
             img,
             draw,
@@ -3731,7 +3750,7 @@ class CominoteEngine:
             px, py = lx, ly + panel_y_offset
             self._draw_dataset_panel(img, draw, px, py, lw, lh, scene, visual, palette, style_record, scene_idx)
 
-        img.save(image_path, format="PNG", dpi=(200, 200))
+        img.save(image_path, format="PNG", dpi=(300, 300))
 
     def _build_layout(self, n, margin, gutter, cw, ch, sw, sh):
         """Return list of (x, y, w, h, scene_index) for comic panel grid.
