@@ -1,0 +1,1015 @@
+{
+  "default": {
+    "id": "theme-explorer",
+    "label": "Theme Explorer",
+    "badge_text": "Comic Preview",
+    "headline": "Select a theme to load its featured hero, scene, and comic effects.",
+    "sound_effect": "POP!",
+    "theme_profile": "cartoon_kids",
+    "ui": {
+      "accent": "#f4631e",
+      "accent_2": "#ffd93d",
+      "accent_3": "#1e6fd9",
+      "surface": "#fffaf0",
+      "bg_start": "#fff3b8",
+      "bg_end": "#fff8e5",
+      "glow": "rgba(244, 99, 30, 0.2)"
+    },
+    "comic_elements": [
+      "halftone dots",
+      "speech bubbles",
+      "caption boxes"
+    ],
+    "featured_cast": [
+      {
+        "name": "Theme Explorer",
+        "description": "A bright placeholder hero keeps the dashboard stable when a theme has no mapped signature yet.",
+        "variant": "explorer",
+        "category": "student",
+        "palette": {
+          "hair": "#47311f",
+          "skin": "#efc39b",
+          "costume_primary": "#f4631e",
+          "costume_accent": "#ffd93d",
+          "eye": "#1e6fd9"
+        },
+        "costume": {
+          "top": "comic explorer jacket",
+          "bottom": "dashboard-ready adventure pants",
+          "accessory": "story compass",
+          "shoes": "comic sneakers"
+        },
+        "tags": [
+          "placeholder",
+          "comic",
+          "explorer",
+          "dashboard"
+        ]
+      }
+    ],
+    "featured_background": {
+      "name": "Comic Studio",
+      "description": "A warm yellow studio filled with panels, dots, and speech bubbles.",
+      "category": "studio",
+      "prompt_fragment": "bright comic studio with halftone dots, caption boxes, and story panels",
+      "palette": {
+        "primary": "#fff3b8",
+        "secondary": "#ffe39b",
+        "accent": "#f4631e",
+        "floor": "#f6cf74"
+      },
+      "tags": [
+        "studio",
+        "comic",
+        "halftone",
+        "speech"
+      ]
+    }
+  },
+  "themes": [
+    {
+      "id": "pokemon",
+      "label": "Pokemon",
+      "keywords": ["pokemon", "pikachu", "pokeball", "ash"],
+      "badge_text": "Volt Burst",
+      "headline": "Electric adventures charge the dashboard the moment this theme is selected.",
+      "sound_effect": "PIKA!",
+      "theme_profile": "anime",
+      "ui": {
+        "accent": "#f5c518",
+        "accent_2": "#ef4444",
+        "accent_3": "#3b82f6",
+        "surface": "#fffbe6",
+        "bg_start": "#fff3ab",
+        "bg_end": "#ffe7a3",
+        "glow": "rgba(245, 197, 24, 0.26)"
+      },
+      "comic_elements": ["lightning sparks", "puffy clouds", "electric speed lines"],
+      "featured_cast": [
+        {
+          "name": "Pikachu",
+          "description": "An electric mascot with bright cheeks, playful motion, and instant comic energy.",
+          "variant": "electric-mascot",
+          "category": "mascot",
+          "palette": {
+            "hair": "#2f2a26",
+            "skin": "#f5d34c",
+            "costume_primary": "#f5c518",
+            "costume_accent": "#ef4444",
+            "eye": "#1f2937"
+          },
+          "costume": {
+            "top": "electric hero fur",
+            "bottom": "lightning tail stance",
+            "accessory": "red cheek sparks",
+            "shoes": "comic paws"
+          },
+          "tags": ["pokemon", "electric", "mascot", "lightning", "cute"]
+        }
+      ],
+      "featured_background": {
+        "name": "Thunder Meadow",
+        "description": "A spark-filled meadow with comic clouds and sunny yellow light.",
+        "category": "nature",
+        "prompt_fragment": "electric meadow, comic clouds, playful yellow lightning, bright sky",
+        "palette": {
+          "primary": "#fff3ab",
+          "secondary": "#9dd8ff",
+          "accent": "#f5c518",
+          "floor": "#8fd56a"
+        },
+        "tags": ["electric", "meadow", "sky", "bright"]
+      }
+    },
+    {
+      "id": "marvel",
+      "label": "Marvel",
+      "keywords": ["marvel", "avengers", "spider-man", "iron man"],
+      "badge_text": "Hero Impact",
+      "headline": "A big-screen superhero setup with bold red, blue, and gold action cues.",
+      "sound_effect": "THWIP!",
+      "theme_profile": "superhero",
+      "ui": {
+        "accent": "#e11d48",
+        "accent_2": "#2563eb",
+        "accent_3": "#f59e0b",
+        "surface": "#fff3ef",
+        "bg_start": "#ffe1db",
+        "bg_end": "#edf4ff",
+        "glow": "rgba(225, 29, 72, 0.24)"
+      },
+      "comic_elements": ["web trails", "repulsor glows", "impact bursts"],
+      "featured_cast": [
+        {
+          "name": "Spider-Man",
+          "description": "A fast web-slinging lead hero with a red-blue comic silhouette.",
+          "variant": "web-hero",
+          "category": "student",
+          "palette": {
+            "hair": "#111827",
+            "skin": "#efc39b",
+            "costume_primary": "#e11d48",
+            "costume_accent": "#2563eb",
+            "eye": "#ffffff"
+          },
+          "costume": {
+            "top": "web suit",
+            "bottom": "acrobat leggings",
+            "accessory": "web shooters",
+            "shoes": "hero boots"
+          },
+          "tags": ["marvel", "spider", "web", "hero", "action"]
+        },
+        {
+          "name": "Iron Man",
+          "description": "A high-tech armored support hero with glowing comic highlights.",
+          "variant": "tech-armor",
+          "category": "subject_expert",
+          "palette": {
+            "hair": "#2f2a26",
+            "skin": "#edc39b",
+            "costume_primary": "#c1121f",
+            "costume_accent": "#f59e0b",
+            "eye": "#93c5fd"
+          },
+          "costume": {
+            "top": "powered armor",
+            "bottom": "metal flight suit",
+            "accessory": "arc reactor",
+            "shoes": "thruster boots"
+          },
+          "tags": ["marvel", "iron", "armor", "tech", "hero"]
+        }
+      ],
+      "featured_background": {
+        "name": "Skyline Command Deck",
+        "description": "A city skyline platform with energy beams and cinematic comic lighting.",
+        "category": "city",
+        "prompt_fragment": "hero skyline, glowing tech deck, dramatic comic lighting, energy beams",
+        "palette": {
+          "primary": "#eef4ff",
+          "secondary": "#ffe1db",
+          "accent": "#2563eb",
+          "floor": "#7c3f2f"
+        },
+        "tags": ["city", "skyline", "hero", "tech"]
+      }
+    },
+    {
+      "id": "naruto",
+      "label": "Naruto",
+      "keywords": ["naruto", "uzumaki", "hokage", "hidden leaf", "shinobi"],
+      "badge_text": "Ninja Rush",
+      "headline": "Orange-blue ninja energy takes over the panels instantly.",
+      "sound_effect": "DATTEBAYO!",
+      "theme_profile": "anime",
+      "ui": {
+        "accent": "#f97316",
+        "accent_2": "#2563eb",
+        "accent_3": "#facc15",
+        "surface": "#fff7ef",
+        "bg_start": "#ffe1c7",
+        "bg_end": "#eef5ff",
+        "glow": "rgba(249, 115, 22, 0.24)"
+      },
+      "comic_elements": ["chakra swirls", "leaf emblems", "speed streaks"],
+      "featured_cast": [
+        {
+          "name": "Naruto Uzumaki",
+          "description": "A high-energy ninja lead with orange highlights and heroic momentum.",
+          "variant": "ninja-hero",
+          "category": "student",
+          "palette": {
+            "hair": "#facc15",
+            "skin": "#efc39b",
+            "costume_primary": "#f97316",
+            "costume_accent": "#1d4ed8",
+            "eye": "#2563eb"
+          },
+          "costume": {
+            "top": "orange ninja jacket",
+            "bottom": "dark shinobi pants",
+            "accessory": "headband",
+            "shoes": "ninja sandals"
+          },
+          "tags": ["naruto", "ninja", "anime", "shinobi", "leaf"]
+        }
+      ],
+      "featured_background": {
+        "name": "Hidden Leaf Rooftops",
+        "description": "Warm rooftops, swirling leaves, and bright anime sky motion.",
+        "category": "village",
+        "prompt_fragment": "anime village rooftops, swirling leaves, orange glow, ninja speed lines",
+        "palette": {
+          "primary": "#ffe1c7",
+          "secondary": "#cfe6ff",
+          "accent": "#f97316",
+          "floor": "#9a6b43"
+        },
+        "tags": ["village", "ninja", "leaf", "rooftop"]
+      }
+    },
+    {
+      "id": "dc",
+      "label": "DC",
+      "keywords": ["dc", "batman", "gotham", "justice league"],
+      "badge_text": "Knight Mode",
+      "headline": "Dark city drama with bold contrast and detective energy.",
+      "sound_effect": "SWOOSH!",
+      "theme_profile": "superhero",
+      "ui": {
+        "accent": "#111827",
+        "accent_2": "#1d4ed8",
+        "accent_3": "#facc15",
+        "surface": "#f5f7fb",
+        "bg_start": "#dce6ff",
+        "bg_end": "#f4f6fb",
+        "glow": "rgba(17, 24, 39, 0.18)"
+      },
+      "comic_elements": ["bat signals", "night skylines", "shadow captions"],
+      "featured_cast": [
+        {
+          "name": "Batman",
+          "description": "A brooding hero lead with cape drama and a midnight city silhouette.",
+          "variant": "dark-knight",
+          "category": "teacher",
+          "palette": {
+            "hair": "#111827",
+            "skin": "#edc39b",
+            "costume_primary": "#1f2937",
+            "costume_accent": "#facc15",
+            "eye": "#93c5fd"
+          },
+          "costume": {
+            "top": "armored cape suit",
+            "bottom": "night hero leggings",
+            "accessory": "utility belt",
+            "shoes": "tactical boots"
+          },
+          "tags": ["dc", "batman", "gotham", "hero", "detective"]
+        }
+      ],
+      "featured_background": {
+        "name": "Gotham Rooftop",
+        "description": "A moonlit rooftop with skyline fog and a bright spotlight.",
+        "category": "city",
+        "prompt_fragment": "dark comic rooftop, skyline fog, moonlight, glowing spotlight",
+        "palette": {
+          "primary": "#dce6ff",
+          "secondary": "#f4f6fb",
+          "accent": "#1d4ed8",
+          "floor": "#4b5563"
+        },
+        "tags": ["city", "night", "rooftop", "detective"]
+      }
+    },
+    {
+      "id": "dragon-ball",
+      "label": "Dragon Ball",
+      "keywords": ["dragon ball", "goku", "saiyan", "kamehameha"],
+      "badge_text": "Power Charge",
+      "headline": "Big action energy and glowing aura effects snap into place immediately.",
+      "sound_effect": "KAME!",
+      "theme_profile": "anime",
+      "ui": {
+        "accent": "#f97316",
+        "accent_2": "#2563eb",
+        "accent_3": "#fde047",
+        "surface": "#fff8ee",
+        "bg_start": "#ffe0bf",
+        "bg_end": "#e9f2ff",
+        "glow": "rgba(249, 115, 22, 0.24)"
+      },
+      "comic_elements": ["energy aura", "impact rings", "battle speed lines"],
+      "featured_cast": [
+        {
+          "name": "Goku",
+          "description": "A bright heroic fighter with orange-blue energy and a charged stance.",
+          "variant": "saiyan-warrior",
+          "category": "student",
+          "palette": {
+            "hair": "#1f2937",
+            "skin": "#efc39b",
+            "costume_primary": "#f97316",
+            "costume_accent": "#2563eb",
+            "eye": "#2563eb"
+          },
+          "costume": {
+            "top": "orange gi",
+            "bottom": "training pants",
+            "accessory": "power wristbands",
+            "shoes": "martial boots"
+          },
+          "tags": ["dragon ball", "goku", "anime", "fighter", "energy"]
+        }
+      ],
+      "featured_background": {
+        "name": "Sky Arena",
+        "description": "Open sky cliffs, energy rings, and bright action atmosphere.",
+        "category": "arena",
+        "prompt_fragment": "anime sky arena, charged energy rings, cliffs, action lighting",
+        "palette": {
+          "primary": "#e9f2ff",
+          "secondary": "#ffe0bf",
+          "accent": "#2563eb",
+          "floor": "#b77a3d"
+        },
+        "tags": ["arena", "sky", "energy", "battle"]
+      }
+    },
+    {
+      "id": "one-piece",
+      "label": "One Piece",
+      "keywords": ["one piece", "luffy", "straw hat", "grand line"],
+      "badge_text": "Pirate Quest",
+      "headline": "Ocean motion, bold reds, and adventurous comic framing take over fast.",
+      "sound_effect": "GUM-GUM!",
+      "theme_profile": "anime",
+      "ui": {
+        "accent": "#dc2626",
+        "accent_2": "#2563eb",
+        "accent_3": "#facc15",
+        "surface": "#fff7ef",
+        "bg_start": "#ffe2cf",
+        "bg_end": "#eaf6ff",
+        "glow": "rgba(220, 38, 38, 0.22)"
+      },
+      "comic_elements": ["ocean wind", "rope frames", "adventure clouds"],
+      "featured_cast": [
+        {
+          "name": "Luffy",
+          "description": "A fearless pirate lead with a straw-hat silhouette and bright comic energy.",
+          "variant": "pirate-hero",
+          "category": "student",
+          "palette": {
+            "hair": "#2f2a26",
+            "skin": "#efc39b",
+            "costume_primary": "#dc2626",
+            "costume_accent": "#facc15",
+            "eye": "#2563eb"
+          },
+          "costume": {
+            "top": "open pirate vest",
+            "bottom": "adventure shorts",
+            "accessory": "straw hat",
+            "shoes": "deck sandals"
+          },
+          "tags": ["one piece", "luffy", "pirate", "adventure", "ocean"]
+        }
+      ],
+      "featured_background": {
+        "name": "Grand Line Deck",
+        "description": "A bright ship deck with big clouds, ropes, and rolling blue sea.",
+        "category": "ship",
+        "prompt_fragment": "anime ship deck, bright sea, ropes, huge adventure clouds",
+        "palette": {
+          "primary": "#eaf6ff",
+          "secondary": "#ffe2cf",
+          "accent": "#2563eb",
+          "floor": "#9a6b43"
+        },
+        "tags": ["ship", "sea", "pirate", "deck"]
+      }
+    },
+    {
+      "id": "space",
+      "label": "Space",
+      "keywords": ["space", "astronaut", "galaxy", "planet", "alien"],
+      "badge_text": "Orbit Mode",
+      "headline": "Cosmic gradients, stars, and sci-fi comic details appear instantly.",
+      "sound_effect": "ZOOM!",
+      "theme_profile": "pixar",
+      "ui": {
+        "accent": "#2563eb",
+        "accent_2": "#7c3aed",
+        "accent_3": "#22d3ee",
+        "surface": "#f4f7ff",
+        "bg_start": "#dbeafe",
+        "bg_end": "#ede9fe",
+        "glow": "rgba(37, 99, 235, 0.22)"
+      },
+      "comic_elements": ["star fields", "orbit rings", "glow panels"],
+      "featured_cast": [
+        {
+          "name": "Astronaut Nova",
+          "description": "A bold space explorer with a clean helmet silhouette and glowing visor.",
+          "variant": "astronaut",
+          "category": "student",
+          "palette": {
+            "hair": "#2f2a26",
+            "skin": "#efc39b",
+            "costume_primary": "#f8fafc",
+            "costume_accent": "#2563eb",
+            "eye": "#22d3ee"
+          },
+          "costume": {
+            "top": "space suit",
+            "bottom": "orbital boots",
+            "accessory": "glow visor",
+            "shoes": "gravity boots"
+          },
+          "tags": ["space", "astronaut", "explorer", "cosmic", "science"]
+        },
+        {
+          "name": "Orbit Alien",
+          "description": "A playful alien companion that keeps the preview feeling dynamic.",
+          "variant": "alien",
+          "category": "mascot",
+          "palette": {
+            "hair": "#34d399",
+            "skin": "#86efac",
+            "costume_primary": "#7c3aed",
+            "costume_accent": "#22d3ee",
+            "eye": "#111827"
+          },
+          "costume": {
+            "top": "cosmic jumpsuit",
+            "bottom": "hover boots",
+            "accessory": "star antenna",
+            "shoes": "hover pads"
+          },
+          "tags": ["alien", "space", "companion", "cosmic", "cute"]
+        }
+      ],
+      "featured_background": {
+        "name": "Orbit Station",
+        "description": "A bright station deck with stars, planets, and glowing panels.",
+        "category": "space",
+        "prompt_fragment": "comic orbit station, planets, stars, glowing tech panels, clean sci-fi deck",
+        "palette": {
+          "primary": "#dbeafe",
+          "secondary": "#ede9fe",
+          "accent": "#22d3ee",
+          "floor": "#475569"
+        },
+        "tags": ["space", "station", "stars", "galaxy"]
+      }
+    },
+    {
+      "id": "pirates",
+      "label": "Pirates",
+      "keywords": ["pirate", "pirates", "captain", "treasure", "ship"],
+      "badge_text": "Treasure Run",
+      "headline": "Warm adventure colors and shipboard comic energy replace stale previews.",
+      "sound_effect": "ARRR!",
+      "theme_profile": "fantasy",
+      "ui": {
+        "accent": "#b45309",
+        "accent_2": "#0f766e",
+        "accent_3": "#facc15",
+        "surface": "#fff8ee",
+        "bg_start": "#ffe7c2",
+        "bg_end": "#e7fbf8",
+        "glow": "rgba(180, 83, 9, 0.22)"
+      },
+      "comic_elements": ["rope borders", "treasure glints", "ocean swashes"],
+      "featured_cast": [
+        {
+          "name": "Captain Redwave",
+          "description": "A dramatic pirate captain with bold coat lines and ship-deck swagger.",
+          "variant": "pirate-captain",
+          "category": "teacher",
+          "palette": {
+            "hair": "#2f2a26",
+            "skin": "#efc39b",
+            "costume_primary": "#b45309",
+            "costume_accent": "#dc2626",
+            "eye": "#0f766e"
+          },
+          "costume": {
+            "top": "captain coat",
+            "bottom": "deck trousers",
+            "accessory": "tricorn hat",
+            "shoes": "sea boots"
+          },
+          "tags": ["pirate", "captain", "ship", "treasure", "adventure"]
+        }
+      ],
+      "featured_background": {
+        "name": "Treasure Deck",
+        "description": "A bright ocean deck with ropes, flags, and treasure glow.",
+        "category": "ship",
+        "prompt_fragment": "pirate ship deck, treasure glow, ropes, sails, comic sea spray",
+        "palette": {
+          "primary": "#ffe7c2",
+          "secondary": "#d7f5ef",
+          "accent": "#0f766e",
+          "floor": "#9a6b43"
+        },
+        "tags": ["ship", "ocean", "treasure", "deck"]
+      }
+    },
+    {
+      "id": "jungle",
+      "label": "Jungle",
+      "keywords": ["jungle", "forest", "lion", "safari", "explorer"],
+      "badge_text": "Wild Quest",
+      "headline": "Lush green panels and bold explorer characters load without repeats.",
+      "sound_effect": "ROAR!",
+      "theme_profile": "cartoon_kids",
+      "ui": {
+        "accent": "#16a34a",
+        "accent_2": "#f59e0b",
+        "accent_3": "#22c55e",
+        "surface": "#f6fff0",
+        "bg_start": "#d9f99d",
+        "bg_end": "#fff3c4",
+        "glow": "rgba(22, 163, 74, 0.2)"
+      },
+      "comic_elements": ["leaf frames", "paw prints", "sunny jungle rays"],
+      "featured_cast": [
+        {
+          "name": "Leo the Lion",
+          "description": "A bright jungle mascot with warm gold tones and bold comic charm.",
+          "variant": "lion",
+          "category": "mascot",
+          "palette": {
+            "hair": "#7c2d12",
+            "skin": "#f4b75e",
+            "costume_primary": "#f59e0b",
+            "costume_accent": "#92400e",
+            "eye": "#166534"
+          },
+          "costume": {
+            "top": "sun mane",
+            "bottom": "comic paws",
+            "accessory": "leaf badge",
+            "shoes": "soft paws"
+          },
+          "tags": ["jungle", "lion", "animal", "mascot", "wild"]
+        },
+        {
+          "name": "Jungle Explorer",
+          "description": "An explorer partner adds motion and story variety to the preview.",
+          "variant": "explorer",
+          "category": "student",
+          "palette": {
+            "hair": "#47311f",
+            "skin": "#efc39b",
+            "costume_primary": "#16a34a",
+            "costume_accent": "#f59e0b",
+            "eye": "#2563eb"
+          },
+          "costume": {
+            "top": "field vest",
+            "bottom": "safari pants",
+            "accessory": "map satchel",
+            "shoes": "trail boots"
+          },
+          "tags": ["jungle", "explorer", "adventure", "forest", "map"]
+        }
+      ],
+      "featured_background": {
+        "name": "Sunlit Jungle Trail",
+        "description": "A leafy trail with wide light beams and layered comic foliage.",
+        "category": "forest",
+        "prompt_fragment": "sunlit jungle trail, layered leaves, comic foliage, warm rays",
+        "palette": {
+          "primary": "#d9f99d",
+          "secondary": "#fff3c4",
+          "accent": "#16a34a",
+          "floor": "#8b5e3c"
+        },
+        "tags": ["jungle", "forest", "leaves", "sunlight"]
+      }
+    },
+    {
+      "id": "technology",
+      "label": "Technology",
+      "keywords": ["technology", "tech", "robot", "ai", "artificial intelligence", "cyber"],
+      "badge_text": "Neon Logic",
+      "headline": "Robotic characters, neon panels, and clean tech styling swap in instantly.",
+      "sound_effect": "BEEP!",
+      "theme_profile": "pixar",
+      "ui": {
+        "accent": "#0f766e",
+        "accent_2": "#2563eb",
+        "accent_3": "#8b5cf6",
+        "surface": "#f3fbff",
+        "bg_start": "#d1fae5",
+        "bg_end": "#e0e7ff",
+        "glow": "rgba(15, 118, 110, 0.22)"
+      },
+      "comic_elements": ["circuit trails", "hologram cards", "neon dots"],
+      "featured_cast": [
+        {
+          "name": "Circuit Bot",
+          "description": "A sleek robot lead with glowing panels and instant futuristic identity.",
+          "variant": "robot",
+          "category": "subject_expert",
+          "palette": {
+            "hair": "#94a3b8",
+            "skin": "#dbeafe",
+            "costume_primary": "#0f766e",
+            "costume_accent": "#2563eb",
+            "eye": "#22d3ee"
+          },
+          "costume": {
+            "top": "robot shell",
+            "bottom": "servo legs",
+            "accessory": "screen core",
+            "shoes": "hover pads"
+          },
+          "tags": ["technology", "robot", "ai", "cyber", "future"]
+        },
+        {
+          "name": "AI Spark",
+          "description": "A holographic AI companion adds motion, glow, and layered depth.",
+          "variant": "ai-spirit",
+          "category": "mascot",
+          "palette": {
+            "hair": "#a78bfa",
+            "skin": "#e0e7ff",
+            "costume_primary": "#8b5cf6",
+            "costume_accent": "#22d3ee",
+            "eye": "#0f172a"
+          },
+          "costume": {
+            "top": "hologram aura",
+            "bottom": "light trails",
+            "accessory": "data halo",
+            "shoes": "floating light"
+          },
+          "tags": ["technology", "ai", "hologram", "future", "assistant"]
+        }
+      ],
+      "featured_background": {
+        "name": "Neon Lab Grid",
+        "description": "A clean tech lab with glowing panels, screens, and comic circuits.",
+        "category": "lab",
+        "prompt_fragment": "neon lab grid, hologram panels, comic circuits, clean futuristic room",
+        "palette": {
+          "primary": "#d1fae5",
+          "secondary": "#e0e7ff",
+          "accent": "#2563eb",
+          "floor": "#475569"
+        },
+        "tags": ["technology", "lab", "screens", "neon"]
+      }
+    },
+    {
+      "id": "alice",
+      "label": "Alice in Wonderland",
+      "keywords": ["alice", "wonderland", "rabbit hole", "cheshire"],
+      "badge_text": "Wonder Shift",
+      "headline": "Curious fantasy details and storybook framing replace generic art.",
+      "sound_effect": "WHOA!",
+      "theme_profile": "fantasy",
+      "ui": {
+        "accent": "#3b82f6",
+        "accent_2": "#f59e0b",
+        "accent_3": "#ec4899",
+        "surface": "#f8fbff",
+        "bg_start": "#dbeafe",
+        "bg_end": "#ffe8f5",
+        "glow": "rgba(59, 130, 246, 0.2)"
+      },
+      "comic_elements": ["storybook frames", "clock motifs", "floating cards"],
+      "featured_cast": [
+        {
+          "name": "Alice",
+          "description": "A curious storybook lead with wonder-filled motion and soft blue tones.",
+          "variant": "wonder-heroine",
+          "category": "student",
+          "palette": {
+            "hair": "#f5d0a9",
+            "skin": "#f0c7a7",
+            "costume_primary": "#60a5fa",
+            "costume_accent": "#f59e0b",
+            "eye": "#2563eb"
+          },
+          "costume": {
+            "top": "storybook dress",
+            "bottom": "apron skirt",
+            "accessory": "clock ribbon",
+            "shoes": "storybook shoes"
+          },
+          "tags": ["alice", "wonderland", "storybook", "fantasy", "curious"]
+        }
+      ],
+      "featured_background": {
+        "name": "Wonder Garden",
+        "description": "A dreamy garden with floating cards, clocks, and warm fantasy color.",
+        "category": "garden",
+        "prompt_fragment": "storybook wonder garden, floating cards, clocks, fantasy flowers",
+        "palette": {
+          "primary": "#dbeafe",
+          "secondary": "#ffe8f5",
+          "accent": "#ec4899",
+          "floor": "#88c76a"
+        },
+        "tags": ["garden", "storybook", "fantasy", "cards"]
+      }
+    },
+    {
+      "id": "bond",
+      "label": "Spy Mission",
+      "keywords": ["bond", "james bond", "johnny english", "spy", "mission", "agent"],
+      "badge_text": "Stealth Mode",
+      "headline": "Spy themes now load a mission-ready character instead of a reused generic face.",
+      "sound_effect": "CLICK!",
+      "theme_profile": "superhero",
+      "ui": {
+        "accent": "#111827",
+        "accent_2": "#b91c1c",
+        "accent_3": "#f59e0b",
+        "surface": "#faf7f2",
+        "bg_start": "#e5e7eb",
+        "bg_end": "#fce7cf",
+        "glow": "rgba(17, 24, 39, 0.18)"
+      },
+      "comic_elements": ["laser grids", "mission folders", "stealth shadows"],
+      "featured_cast": [
+        {
+          "name": "Agent Shadow",
+          "description": "A mission-focused spy lead with sharp contrast and cinematic energy.",
+          "variant": "spy-agent",
+          "category": "teacher",
+          "palette": {
+            "hair": "#111827",
+            "skin": "#edc39b",
+            "costume_primary": "#111827",
+            "costume_accent": "#b91c1c",
+            "eye": "#f59e0b"
+          },
+          "costume": {
+            "top": "tailored mission suit",
+            "bottom": "sleek field pants",
+            "accessory": "spy tie",
+            "shoes": "dress boots"
+          },
+          "tags": ["spy", "mission", "agent", "bond", "stealth"]
+        }
+      ],
+      "featured_background": {
+        "name": "Mission Control Hall",
+        "description": "A clean stealth corridor with red scanners and focused spotlight.",
+        "category": "tech",
+        "prompt_fragment": "spy corridor, red scanners, stealth shadows, mission light",
+        "palette": {
+          "primary": "#e5e7eb",
+          "secondary": "#fce7cf",
+          "accent": "#b91c1c",
+          "floor": "#475569"
+        },
+        "tags": ["spy", "mission", "corridor", "stealth"]
+      }
+    },
+    {
+      "id": "stranger-things",
+      "label": "Stranger Things",
+      "keywords": ["stranger things", "eleven", "hawkins", "upside down"],
+      "badge_text": "Upside Pulse",
+      "headline": "Neon mystery and supernatural contrast switch in right away.",
+      "sound_effect": "WHUM!",
+      "theme_profile": "superhero",
+      "ui": {
+        "accent": "#7c2d12",
+        "accent_2": "#8b5cf6",
+        "accent_3": "#ef4444",
+        "surface": "#fff5f2",
+        "bg_start": "#fee2e2",
+        "bg_end": "#ede9fe",
+        "glow": "rgba(124, 45, 18, 0.18)"
+      },
+      "comic_elements": ["neon fog", "mystery glows", "upside shadows"],
+      "featured_cast": [
+        {
+          "name": "Eleven",
+          "description": "A focused supernatural lead with quiet power and neon tension.",
+          "variant": "mystic-hero",
+          "category": "student",
+          "palette": {
+            "hair": "#47311f",
+            "skin": "#efc39b",
+            "costume_primary": "#7c2d12",
+            "costume_accent": "#8b5cf6",
+            "eye": "#ef4444"
+          },
+          "costume": {
+            "top": "retro jacket",
+            "bottom": "mystery jeans",
+            "accessory": "glow aura",
+            "shoes": "retro sneakers"
+          },
+          "tags": ["stranger things", "eleven", "mystery", "supernatural", "retro"]
+        }
+      ],
+      "featured_background": {
+        "name": "Neon Hawkins Street",
+        "description": "A moody street with glowing fog, signs, and supernatural depth.",
+        "category": "city",
+        "prompt_fragment": "neon mystery street, fog, retro lights, supernatural comic mood",
+        "palette": {
+          "primary": "#fee2e2",
+          "secondary": "#ede9fe",
+          "accent": "#8b5cf6",
+          "floor": "#5b4636"
+        },
+        "tags": ["mystery", "neon", "fog", "retro"]
+      }
+    },
+    {
+      "id": "journey-west",
+      "label": "Journey to the West",
+      "keywords": ["journey to the west", "sun wukong", "monkey king", "pilgrim"],
+      "badge_text": "Myth Burst",
+      "headline": "Mythic motion, gold clouds, and a legendary lead replace generic fantasy art.",
+      "sound_effect": "WHOOSH!",
+      "theme_profile": "fantasy",
+      "ui": {
+        "accent": "#d97706",
+        "accent_2": "#dc2626",
+        "accent_3": "#0f766e",
+        "surface": "#fff8ef",
+        "bg_start": "#ffe7bf",
+        "bg_end": "#e6fffb",
+        "glow": "rgba(217, 119, 6, 0.22)"
+      },
+      "comic_elements": ["gold clouds", "staff arcs", "mythic motion trails"],
+      "featured_cast": [
+        {
+          "name": "Sun Wukong",
+          "description": "A legendary trickster hero with a bright staff silhouette and agile energy.",
+          "variant": "mythic-monkey",
+          "category": "student",
+          "palette": {
+            "hair": "#7c2d12",
+            "skin": "#f2c59f",
+            "costume_primary": "#d97706",
+            "costume_accent": "#dc2626",
+            "eye": "#0f766e"
+          },
+          "costume": {
+            "top": "mythic armor vest",
+            "bottom": "travel wraps",
+            "accessory": "golden staff",
+            "shoes": "cloud shoes"
+          },
+          "tags": ["journey to the west", "sun wukong", "myth", "staff", "monkey king"]
+        }
+      ],
+      "featured_background": {
+        "name": "Cloud Mountain Gate",
+        "description": "A bright mountain gate with swirling clouds and fantasy depth.",
+        "category": "mountain",
+        "prompt_fragment": "mythic cloud mountain gate, gold clouds, fantasy path, comic depth",
+        "palette": {
+          "primary": "#ffe7bf",
+          "secondary": "#e6fffb",
+          "accent": "#dc2626",
+          "floor": "#9a6b43"
+        },
+        "tags": ["mountain", "cloud", "myth", "fantasy"]
+      }
+    },
+    {
+      "id": "rings",
+      "label": "Lord of the Rings",
+      "keywords": ["lord of the rings", "frodo", "gandalf", "middle earth", "ring"],
+      "badge_text": "Epic Quest",
+      "headline": "Fantasy quest themes now load a clear hero identity with cinematic scenery.",
+      "sound_effect": "CLANG!",
+      "theme_profile": "fantasy",
+      "ui": {
+        "accent": "#166534",
+        "accent_2": "#ca8a04",
+        "accent_3": "#7c3aed",
+        "surface": "#f7fff4",
+        "bg_start": "#dcfce7",
+        "bg_end": "#fef3c7",
+        "glow": "rgba(22, 101, 52, 0.2)"
+      },
+      "comic_elements": ["quest maps", "ring glints", "forest depth"],
+      "featured_cast": [
+        {
+          "name": "Frodo",
+          "description": "A determined quest lead with earthy tones and an epic-story silhouette.",
+          "variant": "fantasy-ranger",
+          "category": "student",
+          "palette": {
+            "hair": "#47311f",
+            "skin": "#efc39b",
+            "costume_primary": "#166534",
+            "costume_accent": "#ca8a04",
+            "eye": "#2563eb"
+          },
+          "costume": {
+            "top": "travel cloak",
+            "bottom": "quest trousers",
+            "accessory": "ring chain",
+            "shoes": "journey boots"
+          },
+          "tags": ["lord of the rings", "frodo", "quest", "fantasy", "ring"]
+        }
+      ],
+      "featured_background": {
+        "name": "Quest Forest Path",
+        "description": "A rich forest trail with layered depth and warm fantasy light.",
+        "category": "forest",
+        "prompt_fragment": "fantasy quest forest, layered trees, warm light, cinematic path",
+        "palette": {
+          "primary": "#dcfce7",
+          "secondary": "#fef3c7",
+          "accent": "#166534",
+          "floor": "#8b5e3c"
+        },
+        "tags": ["forest", "quest", "fantasy", "journey"]
+      }
+    },
+    {
+      "id": "jungle-book",
+      "label": "Jungle Book",
+      "keywords": ["jungle book", "mowgli", "baloo", "bagheera"],
+      "badge_text": "Forest Play",
+      "headline": "Classic jungle stories now render with a dedicated cast and lively environment.",
+      "sound_effect": "HEY!",
+      "theme_profile": "cartoon_kids",
+      "ui": {
+        "accent": "#15803d",
+        "accent_2": "#f59e0b",
+        "accent_3": "#60a5fa",
+        "surface": "#f5fff0",
+        "bg_start": "#dcfce7",
+        "bg_end": "#fff3c4",
+        "glow": "rgba(21, 128, 61, 0.18)"
+      },
+      "comic_elements": ["leaf bursts", "river curves", "animal tracks"],
+      "featured_cast": [
+        {
+          "name": "Mowgli",
+          "description": "A lively jungle lead with explorer energy and bright storybook motion.",
+          "variant": "explorer",
+          "category": "student",
+          "palette": {
+            "hair": "#2f2a26",
+            "skin": "#efc39b",
+            "costume_primary": "#15803d",
+            "costume_accent": "#f59e0b",
+            "eye": "#60a5fa"
+          },
+          "costume": {
+            "top": "forest wrap",
+            "bottom": "trail shorts",
+            "accessory": "leaf pouch",
+            "shoes": "barefoot comic steps"
+          },
+          "tags": ["jungle book", "mowgli", "forest", "adventure", "animal"]
+        }
+      ],
+      "featured_background": {
+        "name": "River Jungle Bend",
+        "description": "A storybook river bend with layered leaves and soft golden light.",
+        "category": "forest",
+        "prompt_fragment": "storybook jungle river, layered leaves, animal path, warm light",
+        "palette": {
+          "primary": "#dcfce7",
+          "secondary": "#fff3c4",
+          "accent": "#15803d",
+          "floor": "#8b5e3c"
+        },
+        "tags": ["jungle", "river", "forest", "storybook"]
+      }
+    }
+  ]
+}

@@ -7,6 +7,11 @@ import {
   signOut,
   updateProfile,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  DEFAULT_THEME_RENDER,
+  buildThemePreviewDataUri,
+  normalizeThemeRender,
+} from "./theme_preview.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDf3QB-hQ1_RtwYTkgFPlJ5AGToSbCe6iw",
@@ -52,6 +57,7 @@ const state = {
   user: null,
   history: [],
   themes: [],
+  selectedThemeSlug: "",
 };
 
 const els = {};
@@ -80,7 +86,15 @@ function cacheEls() {
     "theme-hint",
     "theme-summary-card",
     "theme-name",
+    "theme-character-stage",
+    "theme-badge",
+    "theme-character-image",
+    "theme-sound-effect",
+    "theme-character-name",
+    "theme-character-description",
     "theme-preview",
+    "theme-background-pill",
+    "theme-elements-pill",
     "theme-visual-pill",
     "theme-subject-pill",
     "theme-style-pill",
@@ -103,6 +117,11 @@ function cacheEls() {
     "comic-image",
     "comic-title",
     "comic-caption",
+    "preview-theme-stage",
+    "preview-theme-image",
+    "preview-theme-sound",
+    "preview-placeholder-title",
+    "preview-placeholder-text",
     "download-pdf",
     "history-list",
   ];
@@ -260,13 +279,83 @@ function formatNumber(value) {
 }
 
 function currentTheme() {
-  const slug = els["theme-select"]?.value || "";
+  const slug = state.selectedThemeSlug || els["theme-select"]?.value || "";
   return state.themes.find((theme) => theme.slug === slug) || null;
+}
+
+function themeRenderFor(theme = null) {
+  return normalizeThemeRender(theme?.theme_render || theme?.meta?.theme_render || DEFAULT_THEME_RENDER);
+}
+
+function primaryThemeCharacter(theme = null) {
+  const render = themeRenderFor(theme);
+  return render.featured_cast?.[0] || DEFAULT_THEME_RENDER.featured_cast[0];
+}
+
+function featuredCastNames(theme = null) {
+  const render = themeRenderFor(theme);
+  const names = (render.featured_cast || [])
+    .map((item) => String(item?.name || "").trim())
+    .filter(Boolean);
+  return names.length ? names.join(" / ") : primaryThemeCharacter(theme).name;
+}
+
+function comicElementsLabel(theme = null) {
+  const render = themeRenderFor(theme);
+  return (render.comic_elements || []).slice(0, 3).join(", ") || "Comic energy";
+}
+
+function setThemeImage(element, theme = null, options = {}) {
+  if (!element) return;
+  const render = themeRenderFor(theme);
+  const primary = primaryThemeCharacter(theme);
+  element.onerror = () => {
+    if (element.dataset.previewFallback === "1") return;
+    element.dataset.previewFallback = "1";
+    element.src = buildThemePreviewDataUri(DEFAULT_THEME_RENDER, options);
+    element.alt = "Theme preview placeholder";
+  };
+  element.dataset.previewFallback = "0";
+  element.src = buildThemePreviewDataUri(render, options);
+  element.alt = `${primary.name} preview`;
+  element.dataset.themeKey = render.id || "theme-preview";
+}
+
+function renderThemeStage(theme = null) {
+  const render = themeRenderFor(theme);
+  const primary = primaryThemeCharacter(theme);
+  const backgroundName = render.featured_background?.name || "Comic World";
+  const stage = els["theme-character-stage"];
+  if (stage) {
+    stage.dataset.themeProfile = render.theme_profile || theme?.theme_profile || "default";
+  }
+
+  if (!theme) {
+    els["theme-badge"].textContent = "Comic Preview";
+    els["theme-sound-effect"].textContent = "POP!";
+    els["theme-character-name"].textContent = "Theme Explorer";
+    els["theme-character-description"].textContent =
+      "Choose a theme to see its featured hero, scene styling, and comic energy.";
+    els["theme-background-pill"].textContent = "🌆 Background: --";
+    els["theme-elements-pill"].textContent = "💥 Elements: --";
+    setThemeImage(els["theme-character-image"], null, { width: 360, height: 360 });
+    return;
+  }
+
+  els["theme-badge"].textContent = render.badge_text || "Comic Preview";
+  els["theme-sound-effect"].textContent = render.sound_effect || "POP!";
+  els["theme-character-name"].textContent = featuredCastNames(theme);
+  els["theme-character-description"].textContent =
+    primary.description || `${primary.name} leads this ${theme.title} comic setup.`;
+  els["theme-background-pill"].textContent = `🌆 Background: ${backgroundName}`;
+  els["theme-elements-pill"].textContent = `💥 Elements: ${comicElementsLabel(theme)}`;
+  setThemeImage(els["theme-character-image"], theme, { width: 360, height: 360 });
 }
 
 function renderThemeSummary(theme = null) {
   const card = els["theme-summary-card"];
   if (!card) return;
+  const render = themeRenderFor(theme);
 
   if (!theme) {
     card.classList.add("empty");
@@ -281,24 +370,27 @@ function renderThemeSummary(theme = null) {
     els["theme-font-pill"].textContent = "Fonts: --";
     els["theme-layout-pill"].textContent = "Panels: --";
     els["theme-size-pill"].textContent = "Story Pool: --";
+    renderThemeStage(null);
     return;
   }
 
   card.classList.remove("empty");
-  card.dataset.themeProfile = theme.theme_profile || "default";
+  card.dataset.themeProfile = render.theme_profile || theme.theme_profile || "default";
   els["theme-name"].textContent = theme.title;
-  els["theme-preview"].textContent = theme.preview;
+  els["theme-preview"].textContent = render.headline || theme.preview;
   els["theme-visual-pill"].textContent = `Visual Theme: ${theme.theme_profile_label || "--"}`;
   els["theme-subject-pill"].textContent = `Topic: ${theme.subject}`;
   els["theme-style-pill"].textContent = `Style: ${theme.recommended_style_label}`;
-  els["theme-cast-pill"].textContent = `Characters: ${theme.theme_character_hint || "--"}`;
+  els["theme-cast-pill"].textContent = `Characters: ${featuredCastNames(theme)}`;
   els["theme-font-pill"].textContent = `Fonts: ${theme.font_label || "--"}`;
   els["theme-layout-pill"].textContent = `Panels: ${theme.layout_label || "--"}`;
   els["theme-size-pill"].textContent = `Story Pool: ${formatNumber(theme.word_count)} words`;
+  renderThemeStage(theme);
 }
 
 function applyThemeVisualState(theme = null) {
-  const profile = theme?.theme_profile || "default";
+  const render = themeRenderFor(theme);
+  const profile = render.theme_profile || theme?.theme_profile || "default";
   document.body.dataset.themeProfile = profile;
 
   const summary = els["theme-summary-card"];
@@ -311,6 +403,16 @@ function applyThemeVisualState(theme = null) {
     preview.dataset.themeProfile = profile;
   }
 
+  const themeStage = els["theme-character-stage"];
+  if (themeStage) {
+    themeStage.dataset.themeProfile = profile;
+  }
+
+  const previewStage = els["preview-theme-stage"];
+  if (previewStage) {
+    previewStage.dataset.themeProfile = profile;
+  }
+
   document.body.style.setProperty(
     "--theme-display-font",
     theme?.ui_display_font || "\"Bangers\", cursive"
@@ -319,13 +421,18 @@ function applyThemeVisualState(theme = null) {
     "--theme-body-font",
     theme?.ui_body_font || "\"Comic Neue\", cursive"
   );
-  document.body.style.setProperty("--theme-accent", theme?.theme_accent || "#f4631e");
-  document.body.style.setProperty("--theme-surface", theme?.theme_surface || "#ffffff");
+  document.body.style.setProperty("--theme-accent", render.ui?.accent || theme?.theme_accent || "#f4631e");
+  document.body.style.setProperty("--theme-accent-2", render.ui?.accent_2 || "#e63946");
+  document.body.style.setProperty("--theme-accent-3", render.ui?.accent_3 || "#1e6fd9");
+  document.body.style.setProperty("--theme-surface", render.ui?.surface || theme?.theme_surface || "#ffffff");
+  document.body.style.setProperty("--theme-bg-start", render.ui?.bg_start || "#fff2b2");
+  document.body.style.setProperty("--theme-bg-end", render.ui?.bg_end || "#fef8df");
+  document.body.style.setProperty("--theme-glow", render.ui?.glow || "rgba(244, 99, 30, 0.18)");
 }
 
 function populateThemeSelect() {
   const select = els["theme-select"];
-  const selectedSlug = select.value;
+  const selectedSlug = state.selectedThemeSlug || select.value;
 
   select.innerHTML = `
     <option value="">Choose a theme</option>
@@ -339,6 +446,9 @@ function populateThemeSelect() {
 
   if (selectedSlug && state.themes.some((theme) => theme.slug === selectedSlug)) {
     select.value = selectedSlug;
+    state.selectedThemeSlug = selectedSlug;
+  } else {
+    state.selectedThemeSlug = "";
   }
 
   if (!state.themes.length) {
@@ -346,7 +456,7 @@ function populateThemeSelect() {
     return;
   }
 
-  els["theme-hint"].textContent = `${formatNumber(state.themes.length)} themes loaded from your JSON files.`;
+  els["theme-hint"].textContent = `${formatNumber(state.themes.length)} themes available in your theme library.`;
 }
 
 function maybeAutofillTitle(theme) {
@@ -362,11 +472,81 @@ function maybeAutofillTitle(theme) {
   }
 }
 
-function applyThemeSelection() {
-  const theme = currentTheme();
+function renderPlaceholderPreview(theme = null, options = {}) {
+  const placeholderTitle = els["preview-placeholder-title"];
+  const placeholderText = els["preview-placeholder-text"];
+  const previewStage = els["preview-theme-stage"];
+  const previewSound = els["preview-theme-sound"];
+  const previewImage = els["preview-theme-image"];
+  const preview = els["comic-preview"];
+  const render = themeRenderFor(theme);
+  const primary = primaryThemeCharacter(theme);
+
+  if (preview) {
+    preview.dataset.themeProfile = render.theme_profile || theme?.theme_profile || "default";
+  }
+
+  if (!theme) {
+    if (previewStage) previewStage.classList.add("is-hidden");
+    if (placeholderTitle) placeholderTitle.textContent = "No comic yet";
+    if (placeholderText) {
+      placeholderText.textContent = "Your comic will appear here after it is ready.";
+    }
+    return;
+  }
+
+  if (previewStage) previewStage.classList.remove("is-hidden");
+  if (previewSound) {
+    previewSound.textContent = render.sound_effect || "POP!";
+  }
+  setThemeImage(previewImage, theme, {
+    width: options.compact ? 300 : 420,
+    height: options.compact ? 300 : 340,
+    compact: true,
+  });
+  if (placeholderTitle) {
+    placeholderTitle.textContent = `Previewing ${primary.name}`;
+  }
+  if (placeholderText) {
+    placeholderText.textContent =
+      `${theme.title} is ready with ${featuredCastNames(theme)}. Generate the comic to replace this live preview with your full themed strip.`;
+  }
+}
+
+function syncThemeState(theme = null, options = {}) {
   renderThemeSummary(theme);
   applyThemeVisualState(theme);
-  maybeAutofillTitle(theme);
+  if (options.autofillTitle !== false) {
+    maybeAutofillTitle(theme);
+  }
+  if (!state.currentComic) {
+    renderPlaceholderPreview(theme, { compact: true });
+  }
+}
+
+function setSelectedTheme(slug = "", options = {}) {
+  state.selectedThemeSlug = slug || "";
+  if (els["theme-select"] && els["theme-select"].value !== state.selectedThemeSlug) {
+    els["theme-select"].value = state.selectedThemeSlug;
+  }
+
+  const theme = currentTheme();
+  const activeComicTheme = state.currentComic?.meta?.theme_slug || "";
+  const shouldResetOutput =
+    options.resetOutput !== false &&
+    state.currentComic &&
+    state.selectedThemeSlug !== activeComicTheme;
+
+  if (shouldResetOutput) {
+    resetOutput();
+  }
+
+  syncThemeState(theme, { autofillTitle: options.autofillTitle !== false });
+  return theme;
+}
+
+function applyThemeSelection() {
+  setSelectedTheme(els["theme-select"]?.value || "", { resetOutput: true, autofillTitle: true });
 }
 
 async function loadThemes() {
@@ -380,13 +560,11 @@ async function loadThemes() {
       String(a.title || "").localeCompare(String(b.title || ""), undefined, { sensitivity: "base" })
     );
     populateThemeSelect();
-    renderThemeSummary(currentTheme());
-    applyThemeVisualState(currentTheme());
+    syncThemeState(currentTheme(), { autofillTitle: false });
   } catch (error) {
     state.themes = [];
     populateThemeSelect();
-    renderThemeSummary(null);
-    applyThemeVisualState(null);
+    syncThemeState(null, { autofillTitle: false });
     els["theme-hint"].textContent = error.message || "Could not load themes.";
   }
 }
@@ -472,6 +650,7 @@ function renderComic(comic) {
 
   const preview = els["comic-preview"];
   preview.classList.remove("empty");
+  renderPlaceholderPreview(null);
 
   const oldImg = els["comic-image"];
   const newImg = oldImg.cloneNode(false);
@@ -479,19 +658,44 @@ function renderComic(comic) {
   newImg.alt = "Generated Cominote comic preview";
   oldImg.replaceWith(newImg);
   els["comic-image"] = newImg;
-  newImg.src = `${apiUrl(comic.image_url)}?v=${encodeURIComponent(comic.comic_id)}`;
 
   const resultTheme =
     state.themes.find((theme) => theme.slug === comic.meta?.theme_slug) ||
     state.themes.find((theme) => theme.title === comic.meta?.theme_title) ||
-    (comic.meta?.theme_profile
+    (comic.meta?.theme_render || comic.meta?.theme_profile
       ? {
-          theme_profile: comic.meta.theme_profile,
-          theme_accent: "#f4631e",
-          theme_surface: "#ffffff",
+          slug: comic.meta?.theme_slug || "",
+          title: comic.meta?.theme_title || comic.title || "Theme Preview",
+          theme_profile: comic.meta?.theme_profile || comic.meta?.theme_render?.theme_profile || "default",
+          theme_render: comic.meta?.theme_render || DEFAULT_THEME_RENDER,
+          ui_display_font: "\"Bangers\", cursive",
+          ui_body_font: "\"Comic Neue\", cursive",
         }
       : null);
-  applyThemeVisualState(resultTheme);
+
+  if (comic.meta?.theme_slug) {
+    state.selectedThemeSlug = comic.meta.theme_slug;
+    if (els["theme-select"] && els["theme-select"].value !== comic.meta.theme_slug) {
+      els["theme-select"].value = comic.meta.theme_slug;
+    }
+  }
+
+  syncThemeState(resultTheme, { autofillTitle: false });
+
+  newImg.addEventListener(
+    "error",
+    () => {
+      state.currentComic = null;
+      preview.classList.add("empty");
+      renderPlaceholderPreview(resultTheme || currentTheme(), { compact: true });
+      els["comic-title"].textContent = "Comic preview unavailable";
+      els["comic-caption"].textContent =
+        "The generated image could not be loaded, so the live theme preview is shown instead. You can still retry generation or use the PDF download if available.";
+      els["download-pdf"].disabled = !comic.downloads?.pdf;
+    },
+    { once: true }
+  );
+  newImg.src = `${apiUrl(comic.image_url)}?v=${encodeURIComponent(comic.comic_id)}`;
 
   els["comic-title"].textContent = comic.title;
   const themeLabel = comic.meta?.theme_title
@@ -505,10 +709,14 @@ function resetOutput() {
   state.currentComic = null;
   hideComicSkeleton();
   els["comic-preview"].classList.add("empty");
-  applyThemeVisualState(currentTheme());
   els["comic-image"].removeAttribute("src");
-  els["comic-title"].textContent = "Waiting for your first comic";
-  els["comic-caption"].textContent = "Your generated comic preview and PDF download will appear here.";
+  renderPlaceholderPreview(currentTheme(), { compact: true });
+  const theme = currentTheme();
+  const primary = primaryThemeCharacter(theme);
+  els["comic-title"].textContent = theme ? `${primary.name} is ready` : "Waiting for your first comic";
+  els["comic-caption"].textContent = theme
+    ? `${theme.title} preview loaded. Generate the full comic PDF to replace this panel.`
+    : "Your generated comic preview and PDF download will appear here.";
   els["download-pdf"].disabled = true;
 }
 
@@ -579,10 +787,8 @@ function handleFileSelection() {
 
 function clearComposer() {
   els["project-title"].value = "";
+  state.selectedThemeSlug = "";
   populateThemeSelect();
-  els["theme-select"].value = "";
-  renderThemeSummary(null);
-  applyThemeVisualState(null);
   els["notes-input"].value = "";
   els["notes-file"].value = "";
   els["file-feedback"].textContent = "No file selected yet.";
@@ -590,6 +796,7 @@ function clearComposer() {
   updateCharCount();
   resetStatusBoard();
   resetOutput();
+  syncThemeState(null, { autofillTitle: false });
 }
 
 function mapAuthError(code) {
@@ -834,8 +1041,9 @@ function setupEvents() {
   els["theme-select"].addEventListener("change", applyThemeSelection);
   updateCharCount();
   resetStatusBoard();
+  state.selectedThemeSlug = els["theme-select"]?.value || "";
   resetOutput();
-  applyThemeVisualState(null);
+  syncThemeState(currentTheme(), { autofillTitle: false });
   setupDropzone();
 }
 

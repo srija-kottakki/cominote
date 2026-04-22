@@ -204,6 +204,22 @@
                 <div class="theme-summary-header">
                   <strong id="theme-name">✨ Select a theme to begin</strong>
                 </div>
+                <div class="theme-summary-hero">
+                  <div id="theme-character-stage" class="theme-character-stage" data-theme-profile="default">
+                    <span id="theme-badge" class="theme-stage-badge">Comic Preview</span>
+                    <img id="theme-character-image" class="theme-character-image" alt="Selected theme character preview">
+                    <span id="theme-sound-effect" class="theme-stage-sfx">POP!</span>
+                  </div>
+                  <div class="theme-character-copy">
+                    <span class="theme-kicker">Featured Character</span>
+                    <strong id="theme-character-name">Theme Explorer</strong>
+                    <p id="theme-character-description">Choose a theme to see its featured hero, scene styling, and comic energy.</p>
+                    <div class="theme-feature-strip">
+                      <span id="theme-background-pill" class="theme-pill theme-pill-background">🌆 Background: --</span>
+                      <span id="theme-elements-pill" class="theme-pill theme-pill-elements">💥 Elements: --</span>
+                    </div>
+                  </div>
+                </div>
                 <p id="theme-preview">Choose a theme to see character styles, color palettes, panel layouts, and visual effects tailored to your story.</p>
                 <div class="theme-pills">
                   <span id="theme-visual-pill" class="theme-pill theme-pill-visual">🎭 Visual: --</span>
@@ -296,8 +312,12 @@
               <h3>Your Comic</h3>
               <div id="comic-preview" class="comic-preview empty">
                 <div class="preview-placeholder">
-                  <strong>No comic yet</strong>
-                  <p>Your comic will appear here after it is ready.</p>
+                  <div id="preview-theme-stage" class="preview-theme-stage is-hidden" data-theme-profile="default">
+                    <img id="preview-theme-image" class="preview-theme-image" alt="Selected theme comic placeholder">
+                    <span id="preview-theme-sound" class="comic-sound-effect preview-theme-sound">POP!</span>
+                  </div>
+                  <strong id="preview-placeholder-title">No comic yet</strong>
+                  <p id="preview-placeholder-text">Your comic will appear here after it is ready.</p>
                 </div>
                 <img id="comic-image" alt="Generated Cominote comic preview">
               </div>
