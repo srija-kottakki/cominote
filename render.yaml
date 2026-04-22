@@ -12,4 +12,3 @@ services:
       - key: FLASK_ENV
         value: production
     healthCheckPath: /api/health
-    autoScaleDyno: false
