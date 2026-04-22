@@ -4,345 +4,1467 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cominote</title>
-  <meta
-    name="description"
-    content="Cominote turns study notes into simple comic-style learning strips."
-  >
+  <meta name="description" content="Cominote turns study notes into simple comic-style learning strips.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Bebas+Neue&family=Cinzel:wght@600;700&family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;600&family=Luckiest+Guy&family=M+PLUS+Rounded+1c:wght@700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=20260421-theme-render-fix">
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Bebas+Neue&family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --y: #FFE03D;
+      --r: #E8253A;
+      --o: #F4621E;
+      --b: #1A1A1A;
+      --w: #FFFFFF;
+      --g: #F5F0E8;
+      --blue: #1E5FD9;
+      --green: #0FA37F;
+      --purple: #7C3AED;
+      --pink: #EC4899;
+      --ink: #1A1A1A;
+      --sh: 5px 5px 0 #1A1A1A;
+      --sh-lg: 8px 8px 0 #1A1A1A;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Comic Neue', cursive;
+      background: var(--g);
+      color: var(--b);
+      overflow-x: hidden;
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='8' fill='%23FFE03D' stroke='%231A1A1A' stroke-width='2'/%3E%3C/svg%3E") 10 10, auto;
+    }
+
+    button, input, textarea, select { font: inherit; cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ─── HALFTONE BACKGROUND ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(26,26,26,0.06) 1.5px, transparent 1.5px);
+      background-size: 18px 18px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── NAV ─── */
+    .simple-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 48px;
+      background: var(--y);
+      border-bottom: 4px solid var(--b);
+      box-shadow: 0 4px 0 var(--b);
+    }
+
+    .logo-box {
+      background: var(--b);
+      border: 3px solid var(--b);
+      padding: 6px 20px;
+      box-shadow: 4px 4px 0 var(--o);
+      display: inline-block;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s;
+      text-decoration: none;
+    }
+    .logo-box:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--o); }
+    .logo-box span {
+      font-family: 'Bangers', cursive;
+      font-size: 2rem;
+      color: var(--y);
+      letter-spacing: 3px;
+      display: block;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+    }
+    .nav-links a, .nav-button-link {
+      font-weight: 700;
+      color: var(--b);
+      font-size: 1rem;
+      background: none;
+      border: none;
+      font-family: 'Fredoka', sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .nav-links a:hover, .nav-button-link:hover { color: var(--r); }
+
+    .btn-primary, .btn-outline {
+      border: 3px solid var(--b);
+      font-weight: 700;
+      box-shadow: var(--sh);
+      transition: transform 0.12s, box-shadow 0.12s;
+      font-family: 'Bangers', cursive;
+      letter-spacing: 1.5px;
+      font-size: 1.1rem;
+      padding: 9px 26px;
+    }
+    .btn-primary { background: var(--o); color: var(--w); }
+    .btn-outline { background: var(--w); color: var(--b); }
+    .btn-primary:hover, .btn-outline:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--b); }
+    .btn-primary:disabled, .btn-outline:disabled { opacity: 0.5; pointer-events: none; }
+    .small-btn { padding: 7px 18px; font-size: 0.95rem; }
+
+    /* ─── HERO ─── */
+    #pg-home { position: relative; }
+
+    .hero-wrap {
+      position: relative;
+      overflow: hidden;
+      min-height: calc(100vh - 70px);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* Diagonal split background */
+    .hero-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--y);
+      clip-path: polygon(0 0, 58% 0, 44% 100%, 0 100%);
+      z-index: 0;
+    }
+    .hero-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--r);
+      clip-path: polygon(60% 0, 100% 0, 100% 100%, 46% 100%);
+      z-index: 0;
+    }
+
+    /* White central zone */
+    .hero-center-band {
+      position: absolute;
+      inset: 0;
+      background: var(--w);
+      clip-path: polygon(42% 0, 62% 0, 48% 100%, 28% 100%);
+      z-index: 0;
+      border-left: 5px solid var(--b);
+      border-right: 5px solid var(--b);
+    }
+
+    .hero-left {
+      position: relative;
+      z-index: 2;
+      padding: 60px 48px 60px 60px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--b);
+      color: var(--y);
+      font-family: 'Bangers', cursive;
+      font-size: 1rem;
+      letter-spacing: 2px;
+      padding: 6px 16px;
+      border: 3px solid var(--b);
+      box-shadow: 3px 3px 0 var(--o);
+      margin-bottom: 20px;
+      animation: badgePop 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    .hero h1 {
+      font-family: 'Bangers', cursive;
+      font-size: clamp(3.5rem, 7vw, 6.5rem);
+      line-height: 0.95;
+      color: var(--b);
+      margin-bottom: 20px;
+      animation: slideLeft 0.7s 0.1s ease both;
+    }
+    .hero h1 .line1 { display: block; }
+    .hero h1 .line2 {
+      display: block;
+      color: var(--r);
+      -webkit-text-stroke: 2px var(--b);
+      text-shadow: 5px 5px 0 var(--b);
+    }
+    .hero h1 .line3 {
+      display: block;
+      font-size: 0.5em;
+      color: var(--b);
+      -webkit-text-stroke: 0;
+      text-shadow: none;
+      font-family: 'Fredoka', sans-serif;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .hero-desc {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 32px;
+      max-width: 440px;
+      line-height: 1.65;
+      animation: slideLeft 0.7s 0.2s ease both;
+      background: rgba(255,255,255,0.75);
+      border-left: 5px solid var(--o);
+      padding: 12px 16px;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      animation: slideLeft 0.7s 0.3s ease both;
+    }
+
+    /* ─── HERO RIGHT: COMIC PANELS ─── */
+    .hero-right {
+      position: relative;
+      z-index: 2;
+      padding: 40px 48px 40px 20px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .comic-panels-hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 0;
+      width: 100%;
+      max-width: 480px;
+      border: 5px solid var(--b);
+      box-shadow: var(--sh-lg);
+      background: var(--w);
+      animation: comicReveal 0.8s 0.2s cubic-bezier(0.22,1,0.36,1) both;
+    }
+
+    .cpanel {
+      border: 3px solid var(--b);
+      overflow: hidden;
+      position: relative;
+      min-height: 200px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      padding: 0;
+    }
+    .cpanel:nth-child(1) { background: #FFF3AA; grid-column: 1 / 3; min-height: 240px; }
+    .cpanel:nth-child(2) { background: #D4F0FF; }
+    .cpanel:nth-child(3) { background: #FFD6F0; }
+
+    .cpanel-dots {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(26,26,26,0.09) 1.5px, transparent 1.5px);
+      background-size: 14px 14px;
+      pointer-events: none;
+    }
+
+    .cpanel-label {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      font-family: 'Bangers', cursive;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      background: var(--b);
+      color: var(--y);
+      padding: 3px 10px;
+      border: 2px solid var(--b);
+    }
+
+    .cpanel-bubble {
+      position: absolute;
+      background: var(--w);
+      border: 3px solid var(--b);
+      border-radius: 18px;
+      padding: 8px 12px;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--b);
+      z-index: 5;
+      box-shadow: 3px 3px 0 var(--b);
+      max-width: 160px;
+      line-height: 1.35;
+    }
+    .cpanel-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -14px;
+      left: 22px;
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 14px solid var(--b);
+    }
+    .cpanel-bubble::before {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 24px;
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 11px solid var(--w);
+      z-index: 1;
+    }
+
+    .sfx-text {
+      position: absolute;
+      font-family: 'Bangers', cursive;
+      font-size: 3.5rem;
+      -webkit-text-stroke: 3px var(--b);
+      text-shadow: 4px 4px 0 var(--b);
+      z-index: 4;
+      animation: sfxBounce 0.8s ease-in-out infinite alternate;
+      letter-spacing: 2px;
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .how-section {
+      padding: 80px 60px;
+      background: var(--w);
+      border-top: 5px solid var(--b);
+      border-bottom: 5px solid var(--b);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .how-section::before {
+      content: 'HOW IT WORKS!';
+      position: absolute;
+      right: -30px;
+      top: 50%;
+      transform: translateY(-50%) rotate(90deg);
+      font-family: 'Bangers', cursive;
+      font-size: 5rem;
+      color: rgba(26,26,26,0.04);
+      letter-spacing: 5px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .section-title {
+      font-family: 'Bangers', cursive;
+      font-size: 3.5rem;
+      color: var(--b);
+      text-align: center;
+      margin-bottom: 12px;
+      letter-spacing: 2px;
+      position: relative;
+    }
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 120px;
+      height: 6px;
+      background: var(--o);
+      border: 2px solid var(--b);
+      margin: 8px auto 0;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 52px;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      max-width: 1000px;
+      margin: 0 auto;
+      border: 4px solid var(--b);
+      box-shadow: var(--sh-lg);
+    }
+
+    .step-card {
+      padding: 32px 20px 28px;
+      border: 3px solid var(--b);
+      text-align: center;
+      position: relative;
+      transition: transform 0.15s, box-shadow 0.15s;
+      cursor: default;
+    }
+    .step-card:nth-child(odd) { background: var(--y); }
+    .step-card:nth-child(even) { background: var(--w); }
+    .step-card:hover {
+      transform: translate(-3px,-3px);
+      box-shadow: 6px 6px 0 var(--b);
+      z-index: 1;
+      position: relative;
+    }
+
+    .step-num {
+      font-family: 'Bangers', cursive;
+      font-size: 4rem;
+      color: var(--o);
+      -webkit-text-stroke: 2px var(--b);
+      display: block;
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+
+    .step-icon {
+      font-size: 2.5rem;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .step-card h3 {
+      font-family: 'Bangers', cursive;
+      font-size: 1.4rem;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      color: var(--b);
+    }
+    .step-card p {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.92rem;
+      font-weight: 500;
+      line-height: 1.55;
+      color: #333;
+    }
+
+    .step-connector {
+      position: absolute;
+      right: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      font-family: 'Bangers', cursive;
+      font-size: 2rem;
+      color: var(--r);
+      -webkit-text-stroke: 1px var(--b);
+    }
+
+    /* ─── CHARACTER SHOWCASE ─── */
+    .characters-section {
+      padding: 80px 60px;
+      background: var(--b);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .characters-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(255,224,61,0.06) 1.5px, transparent 1.5px);
+      background-size: 20px 20px;
+    }
+
+    .characters-section .section-title { color: var(--y); }
+    .characters-section .section-title::after { background: var(--r); }
+    .characters-section .section-subtitle { color: rgba(255,255,255,0.7); }
+
+    .chars-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .char-card {
+      border: 4px solid var(--y);
+      background: rgba(255,255,255,0.06);
+      padding: 20px 12px;
+      text-align: center;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .char-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 6px;
+    }
+    .char-card:nth-child(1)::before { background: var(--r); }
+    .char-card:nth-child(2)::before { background: var(--blue); }
+    .char-card:nth-child(3)::before { background: var(--green); }
+    .char-card:nth-child(4)::before { background: var(--purple); }
+    .char-card:nth-child(5)::before { background: var(--pink); }
+    .char-card:hover {
+      transform: translate(-3px,-3px) rotate(-1deg);
+      box-shadow: 6px 6px 0 var(--y);
+      background: rgba(255,224,61,0.1);
+    }
+
+    .char-svg-wrap { width: 100%; height: 140px; display: flex; align-items: flex-end; justify-content: center; }
+    .char-svg-wrap svg { width: 100%; height: 100%; }
+
+    .char-name {
+      font-family: 'Bangers', cursive;
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+      color: var(--y);
+      display: block;
+      margin-top: 10px;
+    }
+    .char-role {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.65);
+      font-weight: 600;
+    }
+    .char-theme {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 3px 10px;
+      border: 2px solid var(--y);
+      color: var(--y);
+      font-size: 0.75rem;
+      font-family: 'Fredoka', sans-serif;
+      font-weight: 700;
+    }
+
+    /* ─── CTA STRIP ─── */
+    .cta-section {
+      background: var(--r);
+      border-top: 5px solid var(--b);
+      border-bottom: 5px solid var(--b);
+      padding: 60px 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 40px;
+      flex-wrap: wrap;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        45deg,
+        transparent, transparent 20px,
+        rgba(255,255,255,0.06) 20px, rgba(255,255,255,0.06) 22px
+      );
+    }
+
+    .cta-text { position: relative; z-index: 1; }
+    .cta-text h2 {
+      font-family: 'Bangers', cursive;
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      color: var(--w);
+      -webkit-text-stroke: 1px var(--b);
+      text-shadow: 4px 4px 0 var(--b);
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+    .cta-text p {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .cta-actions {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn-cta {
+      font-family: 'Bangers', cursive;
+      font-size: 1.4rem;
+      letter-spacing: 2px;
+      padding: 14px 36px;
+      border: 4px solid var(--b);
+      cursor: pointer;
+      box-shadow: var(--sh-lg);
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .btn-cta-primary { background: var(--y); color: var(--b); }
+    .btn-cta-secondary { background: var(--b); color: var(--y); }
+    .btn-cta:hover { transform: translate(-3px,-3px); box-shadow: 10px 10px 0 var(--b); }
+
+    /* ─── FOOTER ─── */
+    footer {
+      background: var(--b);
+      color: var(--y);
+      text-align: center;
+      padding: 24px;
+      font-family: 'Bangers', cursive;
+      font-size: 1rem;
+      letter-spacing: 2px;
+      border-top: 4px solid var(--o);
+    }
+
+    /* ─── AUTH PAGES ─── */
+    .auth-wrap { min-height: 100vh; background: var(--y); display: flex; flex-direction: column; }
+    .back-btn, .inline-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-weight: 700; color: var(--b); font-size: 0.95rem;
+      background: none; border: none; font-family: 'Fredoka', sans-serif;
+    }
+    .back-btn { margin: 18px 28px; }
+    .back-btn:hover, .inline-link:hover { color: var(--r); }
+    .auth-center { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .auth-card {
+      background: var(--w); border: 4px solid var(--b);
+      box-shadow: var(--sh-lg); padding: 44px 40px;
+      width: 100%; max-width: 430px;
+    }
+    .logo-top { text-align: center; margin-bottom: 24px; }
+    .auth-card h2 { font-family: 'Bangers', cursive; font-size: 2.2rem; text-align: center; margin-bottom: 6px; letter-spacing: 2px; }
+    .sub { text-align: center; color: #555; font-size: 0.92rem; margin-bottom: 28px; font-weight: 700; font-family: 'Fredoka', sans-serif; }
+    .fg { margin-bottom: 18px; }
+    .fg label { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 5px; color: var(--b); text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Fredoka', sans-serif; }
+    .fg input { width: 100%; padding: 11px 14px; border: 3px solid var(--b); font-family: 'Comic Neue', cursive; font-size: 1rem; font-weight: 700; background: var(--w); outline: none; }
+    .fg input:focus { box-shadow: 4px 4px 0 var(--b); }
+    .btn-full {
+      width: 100%; background: var(--o); color: var(--w); border: 3px solid var(--b);
+      padding: 13px; font-family: 'Bangers', cursive; font-size: 1.35rem; letter-spacing: 2px;
+      cursor: pointer; box-shadow: var(--sh); margin-top: 6px; transition: transform 0.1s;
+    }
+    .btn-full:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--b); }
+    .divider { text-align: center; margin: 20px 0; color: #888; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; gap: 10px; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 2px; background: #ddd; }
+    .auth-switch { text-align: center; margin-top: 20px; font-size: 0.92rem; color: #555; font-weight: 700; font-family: 'Fredoka', sans-serif; }
+    .auth-message { text-align: center; min-height: 22px; padding: 8px 12px; font-weight: 700; font-size: 0.92rem; }
+    .auth-message.is-success { color: #155724; }
+    .auth-message.is-error { color: #721c24; }
+
+    /* ─── DASHBOARD ─── */
+    .dash-wrap { min-height: 100vh; background: var(--g); }
+    .dash-nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 40px; background: var(--y); border-bottom: 4px solid var(--b);
+    }
+    .logo-static { cursor: default; }
+    .dash-user { display: flex; align-items: center; gap: 14px; }
+    .user-badge {
+      width: 46px; height: 46px; border-radius: 50%; border: 3px solid var(--b);
+      background: var(--y); display: grid; place-items: center;
+      font-family: 'Bangers', cursive; font-size: 1.2rem; letter-spacing: 1px;
+    }
+    .dash-user-text { display: flex; flex-direction: column; }
+    .dash-user-text span, .dash-user-text small { font-weight: 700; }
+    .dash-body { padding: 42px 40px; }
+    .dash-body h2 { font-family: 'Bangers', cursive; font-size: 2.5rem; margin-bottom: 10px; color: var(--b); letter-spacing: 2px; }
+    .welcome { font-weight: 700; color: #444; margin-bottom: 28px; font-size: 1rem; max-width: 720px; font-family: 'Fredoka', sans-serif; }
+    .dash-header { margin-bottom: 28px; }
+    .dash-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 24px; align-items: start; }
+    .dash-side { display: grid; gap: 24px; }
+    .dash-card { border: 4px solid var(--b); background: var(--w); box-shadow: var(--sh-lg); padding: 26px 24px; }
+    .dash-card h3 { font-family: 'Bangers', cursive; font-size: 1.7rem; margin-bottom: 16px; color: var(--b); letter-spacing: 1px; }
+    .field { margin-bottom: 18px; }
+    .field-label { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 5px; color: var(--b); text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Fredoka', sans-serif; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: 11px 14px; border: 3px solid var(--b);
+      font-family: 'Comic Neue', cursive; font-size: 1rem; font-weight: 700;
+      background: var(--w); outline: none;
+    }
+    .field textarea { min-height: 200px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus { box-shadow: 4px 4px 0 var(--b); }
+    .field-hint, .inline-feedback { font-size: 0.9rem; display: block; font-weight: 700; font-family: 'Fredoka', sans-serif; }
+    .field-group { margin-bottom: 18px; }
+    .primary-card { background: #FFFBEF; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 3px solid var(--b); }
+    .card-header h3 { margin-bottom: 0; }
+    .card-badge { font-size: 0.75rem; background: var(--y); color: var(--b); padding: 5px 12px; border: 2px solid var(--b); font-weight: 700; font-family: 'Fredoka', sans-serif; }
+    .theme-browser { margin-bottom: 18px; }
+    .theme-selector { width: 100%; padding: 11px 14px; border: 3px solid var(--b); font-family: 'Comic Neue', cursive; font-size: 1rem; font-weight: 700; background: var(--w); outline: none; cursor: pointer; }
+    .theme-selector:focus { box-shadow: 4px 4px 0 var(--b); }
+    .theme-summary { border: 3px solid var(--b); background: var(--w); padding: 16px; box-shadow: 4px 4px 0 var(--b); display: grid; gap: 10px; margin-top: 10px; }
+    .theme-summary.empty { background: var(--g); }
+    .theme-summary-header strong { display: block; font-family: 'Bangers', cursive; font-size: 1.4rem; letter-spacing: 1px; }
+    .theme-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .theme-pill { display: inline-flex; align-items: center; min-height: 34px; padding: 6px 10px; border: 2px solid var(--b); background: var(--g); font-weight: 700; font-size: 0.82rem; font-family: 'Fredoka', sans-serif; }
+    .theme-summary-hero { display: grid; grid-template-columns: 200px 1fr; gap: 16px; }
+    .theme-character-stage, .preview-theme-stage { position: relative; overflow: hidden; border: 3px solid var(--b); background: linear-gradient(145deg, var(--theme-bg-start, #fff2b2), var(--theme-bg-end, #fef8df)); min-height: 220px; }
+    .theme-character-image, .preview-theme-image { display: block; width: 100%; height: auto; }
+    .theme-stage-badge { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.92); border: 2px solid var(--b); font-weight: 800; font-size: 0.78rem; padding: 4px 10px; z-index: 2; font-family: 'Fredoka', sans-serif; }
+    .theme-stage-sfx { position: absolute; top: 10px; right: 10px; font-family: 'Bangers', cursive; font-size: 1.6rem; color: #fff; -webkit-text-stroke: 1px var(--b); text-shadow: 2px 2px 0 var(--b); z-index: 2; }
+    .theme-kicker { display: inline-block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; background: var(--y); border: 2px solid var(--b); padding: 3px 8px; font-family: 'Fredoka', sans-serif; }
+    .theme-character-copy { display: grid; align-content: start; gap: 8px; }
+    .theme-character-copy strong { font-family: 'Bangers', cursive; font-size: 1.6rem; letter-spacing: 1px; }
+    .theme-character-copy p { font-family: 'Fredoka', sans-serif; font-size: 0.9rem; font-weight: 600; color: #555; line-height: 1.5; }
+    .theme-feature-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+    .upload-card { display: block; border: 3px dashed var(--b); background: var(--y); padding: 16px; margin-bottom: 8px; transition: transform 0.15s, box-shadow 0.15s; cursor: pointer; }
+    .upload-card input { display: none; }
+    .upload-card.is-dragging { background: #D4F7E0; transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--b); }
+    .upload-card.has-file { background: #D4F7E0; border-style: solid; }
+    .modern-upload { display: flex; align-items: center; gap: 16px; }
+    .upload-icon { font-size: 2.2rem; }
+    .upload-text strong { display: block; font-family: 'Bangers', cursive; font-size: 1.2rem; letter-spacing: 1px; }
+    .upload-text span { font-size: 0.85rem; color: #555; font-family: 'Fredoka', sans-serif; font-weight: 600; }
+    .composer-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .large-btn { font-size: 1.2rem; padding: 14px 24px; flex: 1; }
+    .btn-secondary {
+      background: var(--g); border: 3px solid var(--b); color: var(--b);
+      padding: 12px 20px; font-weight: 700; font-family: 'Fredoka', sans-serif;
+      box-shadow: var(--sh); transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-secondary:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--b); }
+    .status-meter { height: 18px; border: 3px solid var(--b); background: var(--w); overflow: hidden; }
+    .status-progress { width: 0; height: 100%; background: linear-gradient(90deg, var(--o), var(--r), var(--blue)); transition: width 0.28s ease; }
+    .status-steps { display: grid; gap: 12px; margin: 16px 0; }
+    .status-step { border: 2px solid var(--b); background: #f2f2f2; padding: 12px; display: grid; gap: 4px; }
+    .status-step strong { display: block; font-family: 'Bangers', cursive; letter-spacing: 1px; font-size: 1.1rem; }
+    .status-step span { font-weight: 700; font-size: 0.88rem; font-family: 'Fredoka', sans-serif; }
+    .status-step.is-active { background: #FFF6AA; border-color: var(--o); }
+    .status-step.is-done { background: #BDF1DD; }
+    .status-step.is-error { background: #FFD6DA; }
+    .status-note strong { display: block; font-family: 'Bangers', cursive; font-size: 1.3rem; margin-bottom: 6px; letter-spacing: 1px; }
+    .status-note p { font-family: 'Fredoka', sans-serif; font-weight: 600; }
+    .summary-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+    .summary-board article { border: 2px solid var(--b); background: var(--w); padding: 12px; }
+    .summary-board span { font-weight: 700; font-family: 'Fredoka', sans-serif; font-size: 0.85rem; }
+    .summary-board strong { font-family: 'Bangers', cursive; font-size: 1.45rem; margin-top: 4px; display: block; letter-spacing: 1px; }
+    .comic-preview { min-height: 340px; border: 4px solid var(--b); background: linear-gradient(180deg, #ffe76b, #ffd93d); display: grid; place-items: center; overflow: hidden; margin-bottom: 16px; padding: 12px; position: relative; }
+    .comic-preview.empty img { display: none; }
+    .comic-preview:not(.empty) .preview-placeholder { display: none; }
+    .comic-preview img { display: block; width: 100%; max-height: min(86vh, 980px); height: auto; object-fit: contain; }
+    .preview-placeholder { text-align: center; padding: 24px; display: grid; place-items: center; gap: 10px; width: 100%; }
+    .preview-placeholder strong { font-family: 'Bangers', cursive; font-size: 1.5rem; letter-spacing: 1px; }
+    .preview-placeholder p { font-family: 'Fredoka', sans-serif; font-weight: 600; color: #555; }
+    .preview-theme-stage.is-hidden { display: none; }
+    .preview-theme-stage { width: min(100%, 320px); margin: 0 auto 16px; }
+    .preview-theme-sound, .comic-sound-effect { position: absolute; top: 14px; right: 14px; font-family: 'Bangers', cursive; font-size: 1.8rem; color: #fff; -webkit-text-stroke: 1.5px var(--b); text-shadow: 3px 3px 0 var(--b); z-index: 3; }
+    .output-meta { display: grid; gap: 6px; }
+    .output-meta strong { font-family: 'Bangers', cursive; font-size: 1.4rem; letter-spacing: 1px; }
+    .output-meta p { font-family: 'Fredoka', sans-serif; font-weight: 600; color: #555; }
+    .output-actions { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+    .history-card { }
+    .history-list { display: grid; gap: 12px; }
+    .history-entry { border: 2px solid var(--b); background: var(--g); padding: 14px; }
+    .history-entry strong { font-family: 'Bangers', cursive; font-size: 1.2rem; display: block; letter-spacing: 1px; }
+    .history-entry p, .history-entry small { font-weight: 700; font-family: 'Fredoka', sans-serif; }
+    .history-entry button { margin-top: 10px; }
+    .empty-state { min-height: 120px; display: grid; place-items: center; text-align: center; }
+    .empty-state p { font-weight: 700; font-family: 'Fredoka', sans-serif; }
+    .loading-skeleton { background: linear-gradient(90deg, #f0e8c0 25%, #ffe9a0 50%, #f0e8c0 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+    .comic-preview.loading-skeleton img { display: none; }
+    :root {
+      --theme-display-font: "Bangers", cursive;
+      --theme-body-font: "Comic Neue", cursive;
+      --theme-accent: #f4631e;
+      --theme-accent-2: #e63946;
+      --theme-accent-3: #1e6fd9;
+      --theme-surface: #ffffff;
+      --theme-bg-start: #fff2b2;
+      --theme-bg-end: #fef8df;
+      --theme-glow: rgba(244,99,30,0.18);
+    }
+    body[data-theme-profile="anime"] { --theme-accent: #ff5fa2; --theme-accent-2: #6c5ce7; --theme-accent-3: #00b4d8; --theme-surface: #fff4fb; --theme-bg-start: #fff5fb; --theme-bg-end: #e7eeff; --theme-glow: rgba(255,95,162,0.2); }
+    body[data-theme-profile="pixar"] { --theme-accent: #ff8744; --theme-accent-2: #20b2aa; --theme-accent-3: #5e60ce; --theme-surface: #fff7ef; --theme-bg-start: #fff6ed; --theme-bg-end: #eefbff; --theme-glow: rgba(255,135,68,0.18); }
+    body[data-theme-profile="superhero"] { --theme-accent: #ea233f; --theme-accent-2: #0f52ba; --theme-accent-3: #ffd447; --theme-surface: #fff1ef; --theme-bg-start: #fff1ef; --theme-bg-end: #eef3ff; --theme-glow: rgba(234,35,63,0.18); }
+    body[data-theme-profile="cartoon_kids"] { --theme-accent: #fb5607; --theme-accent-2: #ffb703; --theme-accent-3: #2ec4b6; --theme-surface: #fff8dd; --theme-bg-start: #fff8dd; --theme-bg-end: #edfff2; --theme-glow: rgba(255,183,3,0.2); }
+    body[data-theme-profile="manga"] { --theme-accent: #232323; --theme-accent-2: #575757; --theme-accent-3: #a0a0a0; --theme-surface: #f2f2f2; --theme-bg-start: #fafafa; --theme-bg-end: #dcdcdc; --theme-glow: rgba(35,35,35,0.1); }
+    body[data-theme-profile="fantasy"] { --theme-accent: #7d4dff; --theme-accent-2: #2dd4bf; --theme-accent-3: #facc15; --theme-surface: #f8f2ff; --theme-bg-start: #f8f2ff; --theme-bg-end: #ecfbf7; --theme-glow: rgba(125,77,255,0.16); }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes badgePop {
+      from { opacity: 0; transform: scale(0.7) rotate(-5deg); }
+      to { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+    @keyframes slideLeft {
+      from { opacity: 0; transform: translateX(-30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes comicReveal {
+      from { opacity: 0; transform: scale(0.9) rotate(-2deg); }
+      to { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+    @keyframes sfxBounce {
+      from { transform: scale(1) rotate(-4deg); }
+      to { transform: scale(1.1) rotate(4deg); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    @keyframes floatUp {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+    @keyframes effectBounce {
+      0%, 100% { transform: scale(1) rotate(-3deg); }
+      50% { transform: scale(1.12) rotate(3deg); }
+    }
+
+    .nav-links a, .nav-button-link { cursor: pointer; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 1024px) {
+      .hero-wrap { grid-template-columns: 1fr; min-height: auto; }
+      .hero-wrap::before { clip-path: polygon(0 0, 100% 0, 100% 52%, 0 52%); }
+      .hero-wrap::after { clip-path: polygon(0 52%, 100% 52%, 100% 100%, 0 100%); }
+      .hero-center-band { display: none; }
+      .hero-left { padding: 40px 32px; }
+      .hero-right { padding: 20px 32px 40px; justify-content: center; }
+      .chars-grid { grid-template-columns: repeat(3, 1fr); }
+      .steps-grid { grid-template-columns: 1fr 1fr; }
+      .dash-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .simple-nav { padding: 12px 20px; flex-direction: column; gap: 10px; }
+      .hero h1 { font-size: 3rem; }
+      .how-section, .characters-section, .cta-section { padding: 50px 24px; }
+      .steps-grid { grid-template-columns: 1fr; }
+      .chars-grid { grid-template-columns: repeat(2, 1fr); }
+      .cta-section { flex-direction: column; text-align: center; }
+      .dash-body { padding: 24px 16px; }
+      .summary-board { grid-template-columns: 1fr; }
+      .theme-summary-hero { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body data-theme-profile="default">
 
-  <div id="pg-home" class="page active">
-    <nav class="simple-nav">
+<!-- ═══════════════ HOME PAGE ═══════════════ -->
+<div id="pg-home" class="page active">
+
+  <!-- NAV -->
+  <nav class="simple-nav">
+    <button class="logo-box" type="button" onclick="showPage('pg-home')"><span>COMINOTE</span></button>
+    <div class="nav-links">
+      <a href="#how-it-works">How It Works</a>
+      <a href="#characters">Characters</a>
+      <button type="button" class="nav-button-link" onclick="showPage('pg-login')">Login</button>
+      <button type="button" class="btn-primary small-btn" onclick="showPage('pg-signup')">Sign Up Free</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero-wrap">
+    <div class="hero-center-band"></div>
+
+    <div class="hero-left hero">
+      <div class="hero-badge">⚡ NOTES TO COMICS — FREE</div>
+
+      <h1>
+        <span class="line1">YOUR</span>
+        <span class="line2">NOTES,</span>
+        <span class="line1">NOW A</span>
+        <span class="line2">COMIC!</span>
+        <span class="line3">Turn boring study notes into awesome visual stories</span>
+      </h1>
+
+      <p class="hero-desc">
+        Paste your study notes or upload a file — Cominote turns it into a fun comic-style story with <strong>anime &amp; cartoon characters</strong> that makes revision actually enjoyable.
+      </p>
+
+      <div class="hero-btns">
+        <button type="button" class="btn-primary" onclick="showPage('pg-signup')">GET STARTED FREE</button>
+        <button type="button" class="btn-outline" onclick="showPage('pg-login')">Log In</button>
+      </div>
+    </div>
+
+    <!-- COMIC PANELS -->
+    <div class="hero-right">
+      <div class="comic-panels-hero">
+        <!-- Panel 1: Wide top -->
+        <div class="cpanel" style="grid-column:1/3; background:#FFF3AA; min-height:230px;">
+          <div class="cpanel-dots"></div>
+          <span class="cpanel-label">PANEL 01</span>
+          <div class="cpanel-bubble" style="top:52px; left:16px;">
+            Student pastes boring notes into Cominote...
+          </div>
+          <!-- Anime student character -->
+          <svg viewBox="0 0 300 220" xmlns="http://www.w3.org/2000/svg" style="position:absolute; bottom:0; right:20px; width:200px; height:220px;">
+            <!-- Shadow -->
+            <ellipse cx="150" cy="210" rx="55" ry="10" fill="#00000022"/>
+            <!-- Legs -->
+            <rect x="118" y="162" width="22" height="52" rx="8" fill="#4F8FFF" stroke="#1a1a1a" stroke-width="3"/>
+            <rect x="148" y="162" width="22" height="52" rx="8" fill="#4F8FFF" stroke="#1a1a1a" stroke-width="3"/>
+            <!-- Shoes -->
+            <ellipse cx="129" cy="212" rx="16" ry="7" fill="#1a1a1a"/>
+            <ellipse cx="159" cy="212" rx="16" ry="7" fill="#1a1a1a"/>
+            <!-- Body -->
+            <rect x="108" y="110" width="72" height="60" rx="16" fill="#4F8FFF" stroke="#1a1a1a" stroke-width="3"/>
+            <!-- Collar -->
+            <path d="M130 110 L144 130 L158 110" fill="none" stroke="#ffffff" stroke-width="3"/>
+            <!-- Arms -->
+            <path d="M110 118 Q82 128, 86 158" fill="none" stroke="#4F8FFF" stroke-width="16" stroke-linecap="round"/>
+            <path d="M178 118 Q206 140, 196 158" fill="none" stroke="#4F8FFF" stroke-width="16" stroke-linecap="round"/>
+            <!-- Hands -->
+            <circle cx="90" cy="162" r="11" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="192" cy="160" r="11" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <!-- Neck -->
+            <rect x="136" y="96" width="16" height="18" rx="6" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <!-- Head -->
+            <ellipse cx="144" cy="80" rx="42" ry="46" fill="#F4C59B" stroke="#1a1a1a" stroke-width="3"/>
+            <!-- Hair -->
+            <path d="M102 70 Q100 30, 144 26 Q188 30, 186 70 Q180 46, 144 44 Q108 44, 102 70Z" fill="#2D2946"/>
+            <path d="M102 72 Q88 62, 90 44 Q96 30, 110 28 L114 60Z" fill="#2D2946"/>
+            <path d="M186 72 Q200 62, 198 44 Q192 30, 178 28 L174 60Z" fill="#2D2946"/>
+            <!-- Eyes (anime large) -->
+            <ellipse cx="128" cy="82" rx="12" ry="14" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="160" cy="82" rx="12" ry="14" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="128" cy="84" rx="7" ry="9" fill="#356DFF"/>
+            <ellipse cx="160" cy="84" rx="7" ry="9" fill="#356DFF"/>
+            <circle cx="128" cy="82" r="4" fill="#1a1a1a"/>
+            <circle cx="160" cy="82" r="4" fill="#1a1a1a"/>
+            <circle cx="124" cy="78" r="2.5" fill="#ffffff"/>
+            <circle cx="156" cy="78" r="2.5" fill="#ffffff"/>
+            <!-- Eyebrows -->
+            <path d="M116 66 Q128 62, 140 66" fill="none" stroke="#2D2946" stroke-width="3" stroke-linecap="round"/>
+            <path d="M148 66 Q160 62, 172 66" fill="none" stroke="#2D2946" stroke-width="3" stroke-linecap="round"/>
+            <!-- Smile -->
+            <path d="M132 96 Q144 104, 156 96" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+            <!-- Blush -->
+            <ellipse cx="116" cy="92" rx="9" ry="5" fill="#FF8FAB" opacity="0.5"/>
+            <ellipse cx="172" cy="92" rx="9" ry="5" fill="#FF8FAB" opacity="0.5"/>
+          </svg>
+          <span class="sfx-text" style="bottom:20px; left:40%; color:#F4621E;">📄→?</span>
+        </div>
+
+        <!-- Panel 2 -->
+        <div class="cpanel" style="background:#FFD6F0; min-height:200px;">
+          <div class="cpanel-dots"></div>
+          <span class="cpanel-label">PANEL 02</span>
+          <span class="sfx-text" style="top:50%; left:50%; transform:translate(-50%,-50%); color:#E8253A; font-size:4rem;">POW!</span>
+          <!-- Star burst -->
+          <svg viewBox="0 0 200 200" style="position:absolute; inset:0; width:100%; height:100%;" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(100,100)">
+              <path d="M0,-80 L14,-30 L60,-60 L30,-14 L80,0 L30,14 L60,60 L14,30 L0,80 L-14,30 L-60,60 L-30,14 L-80,0 L-30,-14 L-60,-60 L-14,-30 Z" fill="#FFE03D" stroke="#1a1a1a" stroke-width="4" opacity="0.7"/>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Panel 3 -->
+        <div class="cpanel" style="background:#D4F0FF; min-height:200px;">
+          <div class="cpanel-dots"></div>
+          <span class="cpanel-label">PANEL 03</span>
+          <div class="cpanel-bubble" style="top:14px; left:10px; font-size:0.9rem;">
+            I actually UNDERSTAND this now! 🎉
+          </div>
+          <!-- Celebrating character -->
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="position:absolute; bottom:0; right:0; width:130px; height:190px;">
+            <ellipse cx="100" cy="196" rx="40" ry="7" fill="#00000022"/>
+            <rect x="82" y="148" width="16" height="50" rx="7" fill="#FB5607" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="102" y="148" width="16" height="50" rx="7" fill="#FB5607" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="90" cy="196" rx="13" ry="5" fill="#1a1a1a"/>
+            <ellipse cx="110" cy="196" rx="13" ry="5" fill="#1a1a1a"/>
+            <rect x="74" y="100" width="52" height="56" rx="14" fill="#FB5607" stroke="#1a1a1a" stroke-width="2.5"/>
+            <!-- Arms raised -->
+            <path d="M76 106 Q46 80, 40 54" fill="none" stroke="#FB5607" stroke-width="13" stroke-linecap="round"/>
+            <path d="M124 106 Q154 80, 160 54" fill="none" stroke="#FB5607" stroke-width="13" stroke-linecap="round"/>
+            <circle cx="36" cy="50" r="10" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="164" cy="50" r="10" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="90" y="92" width="20" height="14" rx="5" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="100" cy="74" rx="32" ry="36" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2.5"/>
+            <!-- Hair -->
+            <path d="M68 68 Q68 34, 100 30 Q132 34, 132 68 Q125 46, 100 44 Q75 44, 68 68Z" fill="#D4A000"/>
+            <!-- Eyes happy -->
+            <path d="M86 70 Q92 62, 98 70" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M102 70 Q108 62, 114 70" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- Big smile -->
+            <path d="M86 82 Q100 94, 114 82" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="2"/>
+            <path d="M88 82 Q100 92, 112 82" fill="#ffffff"/>
+            <!-- Stars around -->
+            <text x="14" y="40" font-size="18" fill="#FFE03D" stroke="#1a1a1a" stroke-width="1">★</text>
+            <text x="158" y="34" font-size="14" fill="#FFE03D" stroke="#1a1a1a" stroke-width="1">★</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-section" id="how-it-works">
+    <h2 class="section-title">HOW IT WORKS</h2>
+    <p class="section-subtitle">Four simple steps from boring notes to awesome comics</p>
+
+    <div class="steps-grid">
+      <div class="step-card" style="position:relative;">
+        <span class="step-num">01</span>
+        <span class="step-icon">📄</span>
+        <h3>Paste Your Notes</h3>
+        <p>Copy your lesson notes or upload a <code>.txt</code>, <code>.pdf</code>, or <code>.docx</code> file.</p>
+        <span class="step-connector">→</span>
+      </div>
+      <div class="step-card" style="position:relative;">
+        <span class="step-num">02</span>
+        <span class="step-icon">🧠</span>
+        <h3>We Pick Main Ideas</h3>
+        <p>Cominote reads your content and extracts the important concepts automatically.</p>
+        <span class="step-connector">→</span>
+      </div>
+      <div class="step-card" style="position:relative;">
+        <span class="step-num">03</span>
+        <span class="step-icon">🎨</span>
+        <h3>Your Comic Appears</h3>
+        <p>A colorful comic strip with anime &amp; cartoon characters appears ready to view.</p>
+        <span class="step-connector">→</span>
+      </div>
+      <div class="step-card">
+        <span class="step-num">04</span>
+        <span class="step-icon">🚀</span>
+        <h3>Learn Faster!</h3>
+        <p>Visual stories make revision feel lighter, easier, and way more memorable.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHARACTER SHOWCASE -->
+  <section class="characters-section" id="characters">
+    <h2 class="section-title">MEET YOUR HEROES</h2>
+    <p class="section-subtitle">5 unique visual themes — each with signature characters, colors &amp; comic energy</p>
+
+    <div class="chars-grid">
+
+      <!-- Anime -->
+      <div class="char-card">
+        <div class="char-svg-wrap">
+          <svg viewBox="0 0 160 170" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="80" cy="165" rx="38" ry="7" fill="#00000033"/>
+            <rect x="62" y="118" width="15" height="48" rx="6" fill="#FF5FA2" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="83" y="118" width="15" height="48" rx="6" fill="#FF5FA2" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="69" cy="164" rx="11" ry="5" fill="#1a1a1a"/>
+            <ellipse cx="91" cy="164" rx="11" ry="5" fill="#1a1a1a"/>
+            <rect x="54" y="74" width="52" height="52" rx="14" fill="#FF5FA2" stroke="#1a1a1a" stroke-width="2.5"/>
+            <path d="M55 82 Q32 92, 28 116" fill="none" stroke="#FF5FA2" stroke-width="12" stroke-linecap="round"/>
+            <path d="M105 82 Q128 96, 130 116" fill="none" stroke="#FF5FA2" stroke-width="12" stroke-linecap="round"/>
+            <circle cx="26" cy="120" r="9" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="134" cy="120" r="9" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="72" y="66" width="16" height="14" rx="5" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="80" cy="50" rx="34" ry="38" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2.5"/>
+            <path d="M46 46 Q46 10, 80 8 Q114 10, 114 46 Q108 26, 80 24 Q52 24, 46 46Z" fill="#6C5CE7"/>
+            <path d="M46 46 Q34 38, 36 20 L48 38Z" fill="#6C5CE7"/>
+            <path d="M114 46 Q126 38, 124 20 L112 38Z" fill="#6C5CE7"/>
+            <ellipse cx="66" cy="52" rx="10" ry="12" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="94" cy="52" rx="10" ry="12" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="66" cy="54" rx="6" ry="8" fill="#00B4D8"/>
+            <ellipse cx="94" cy="54" rx="6" ry="8" fill="#00B4D8"/>
+            <circle cx="66" cy="52" r="3.5" fill="#1a1a1a"/>
+            <circle cx="94" cy="52" r="3.5" fill="#1a1a1a"/>
+            <circle cx="63" cy="49" r="2" fill="#fff"/>
+            <circle cx="91" cy="49" r="2" fill="#fff"/>
+            <path d="M72 64 Q80 70, 88 64" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+            <ellipse cx="60" cy="60" rx="6" ry="3" fill="#FF8FAB" opacity="0.55"/>
+            <ellipse cx="100" cy="60" rx="6" ry="3" fill="#FF8FAB" opacity="0.55"/>
+          </svg>
+        </div>
+        <span class="char-name">AIKO</span>
+        <span class="char-role">Anime Learner</span>
+        <span class="char-theme">ANIME THEME</span>
+      </div>
+
+      <!-- Pixar -->
+      <div class="char-card">
+        <div class="char-svg-wrap">
+          <svg viewBox="0 0 160 170" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="80" cy="165" rx="38" ry="7" fill="#00000033"/>
+            <rect x="60" y="120" width="18" height="46" rx="9" fill="#20B2AA" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="82" y="120" width="18" height="46" rx="9" fill="#20B2AA" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="69" cy="164" rx="13" ry="6" fill="#1a1a1a"/>
+            <ellipse cx="91" cy="164" rx="13" ry="6" fill="#1a1a1a"/>
+            <rect x="50" y="72" width="60" height="56" rx="20" fill="#FF8744" stroke="#1a1a1a" stroke-width="2.5"/>
+            <ellipse cx="80" cy="92" rx="18" ry="14" fill="rgba(255,255,255,0.3)"/>
+            <path d="M51 82 Q28 92, 30 118" fill="none" stroke="#FF8744" stroke-width="14" stroke-linecap="round"/>
+            <path d="M109 82 Q132 92, 130 118" fill="none" stroke="#FF8744" stroke-width="14" stroke-linecap="round"/>
+            <circle cx="26" cy="118" r="10" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="134" cy="118" r="10" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="70" y="62" width="20" height="16" rx="7" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="80" cy="46" rx="38" ry="42" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2.5"/>
+            <path d="M42 42 Q42 4, 80 2 Q118 4, 118 42 Q112 20, 80 18 Q48 18, 42 42Z" fill="#D4A000"/>
+            <ellipse cx="64" cy="48" rx="12" ry="14" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="96" cy="48" rx="12" ry="14" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="64" cy="50" rx="7" ry="9" fill="#5E60CE"/>
+            <ellipse cx="96" cy="50" rx="7" ry="9" fill="#5E60CE"/>
+            <circle cx="64" cy="48" r="4" fill="#1a1a1a"/>
+            <circle cx="96" cy="48" r="4" fill="#1a1a1a"/>
+            <circle cx="61" cy="44" r="2.5" fill="#fff"/>
+            <circle cx="93" cy="44" r="2.5" fill="#fff"/>
+            <ellipse cx="52" cy="58" rx="9" ry="6" fill="#FFB5A7" opacity="0.6"/>
+            <ellipse cx="108" cy="58" rx="9" ry="6" fill="#FFB5A7" opacity="0.6"/>
+            <path d="M68 64 Q80 74, 92 64" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="char-name">POPPY</span>
+        <span class="char-role">Pixar Student</span>
+        <span class="char-theme">PIXAR THEME</span>
+      </div>
+
+      <!-- Superhero -->
+      <div class="char-card">
+        <div class="char-svg-wrap">
+          <svg viewBox="0 0 160 170" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="80" cy="166" rx="40" ry="7" fill="#00000033"/>
+            <!-- Cape -->
+            <path d="M56 84 Q30 120, 44 155" fill="#EA233F" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="58" y="116" width="18" height="50" rx="7" fill="#0F52BA" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="84" y="116" width="18" height="50" rx="7" fill="#0F52BA" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="67" cy="164" rx="13" ry="5" fill="#1a1a1a"/>
+            <ellipse cx="93" cy="164" rx="13" ry="5" fill="#1a1a1a"/>
+            <!-- Torso -->
+            <path d="M50 80, L110 80, L104 130 L56 130Z" fill="#EA233F" stroke="#1a1a1a" stroke-width="2.5"/>
+            <ellipse cx="80" cy="96" rx="18" ry="16" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <path d="M66 96 Q80 88, 94 96" fill="none" stroke="#EA233F" stroke-width="4"/>
+            <!-- Belt -->
+            <rect x="56" y="118" width="48" height="10" rx="4" fill="#1a1a1a"/>
+            <rect x="74" y="116" width="12" height="12" rx="3" fill="#FFD447" stroke="#1a1a1a" stroke-width="2"/>
+            <!-- Arms -->
+            <path d="M52 84 Q26 100, 20 130" fill="none" stroke="#EA233F" stroke-width="14" stroke-linecap="round"/>
+            <path d="M108 84 Q134 90, 140 116" fill="none" stroke="#EA233F" stroke-width="14" stroke-linecap="round"/>
+            <circle cx="16" cy="134" r="10" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="142" cy="116" r="10" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <!-- Neck -->
+            <rect x="72" y="68" width="16" height="16" rx="5" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <!-- Head -->
+            <ellipse cx="80" cy="48" rx="36" ry="40" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2.5"/>
+            <!-- Mask -->
+            <path d="M44 44 Q50 20, 80 18 Q110 20, 116 44 L108 48 Q100 28, 80 26 Q60 28, 52 48Z" fill="#EA233F"/>
+            <ellipse cx="64" cy="50" rx="11" ry="13" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="96" cy="50" rx="11" ry="13" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="64" cy="52" rx="6" ry="8" fill="#FFD447"/>
+            <ellipse cx="96" cy="52" rx="6" ry="8" fill="#FFD447"/>
+            <circle cx="64" cy="50" r="3.5" fill="#1a1a1a"/>
+            <circle cx="96" cy="50" r="3.5" fill="#1a1a1a"/>
+            <circle cx="61" cy="47" r="2" fill="#fff"/>
+            <circle cx="93" cy="47" r="2" fill="#fff"/>
+            <path d="M70 64 Q80 70, 90 64" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="char-name">SENTINEL</span>
+        <span class="char-role">Hero Guardian</span>
+        <span class="char-theme">SUPERHERO THEME</span>
+      </div>
+
+      <!-- Cartoon Kids -->
+      <div class="char-card">
+        <div class="char-svg-wrap">
+          <svg viewBox="0 0 160 170" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="80" cy="165" rx="36" ry="7" fill="#00000033"/>
+            <rect x="64" y="122" width="14" height="44" rx="7" fill="#FFB703" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="82" y="122" width="14" height="44" rx="7" fill="#FFB703" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="71" cy="164" rx="12" ry="5" fill="#1a1a1a"/>
+            <ellipse cx="89" cy="164" rx="12" ry="5" fill="#1a1a1a"/>
+            <rect x="54" y="82" width="52" height="48" rx="18" fill="#FB5607" stroke="#1a1a1a" stroke-width="2.5"/>
+            <rect x="68" y="94" width="24" height="18" rx="9" fill="#fff" stroke="#1a1a1a" stroke-width="2"/>
+            <path d="M54 90 Q34 98, 36 122" fill="none" stroke="#FB5607" stroke-width="13" stroke-linecap="round"/>
+            <path d="M106 90 Q126 98, 124 122" fill="none" stroke="#FB5607" stroke-width="13" stroke-linecap="round"/>
+            <circle cx="32" cy="122" r="9" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="128" cy="122" r="9" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <rect x="72" y="72" width="16" height="14" rx="5" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="80" cy="52" rx="38" ry="44" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2.5"/>
+            <path d="M42 48 Q44 8, 80 6 Q116 8, 118 48 Q110 22, 80 20 Q50 22, 42 48Z" fill="#E63946"/>
+            <ellipse cx="64" cy="54" rx="13" ry="15" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="96" cy="54" rx="13" ry="15" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="64" cy="57" rx="8" ry="10" fill="#2EC4B6"/>
+            <ellipse cx="96" cy="57" rx="8" ry="10" fill="#2EC4B6"/>
+            <circle cx="64" cy="54" r="4.5" fill="#1a1a1a"/>
+            <circle cx="96" cy="54" r="4.5" fill="#1a1a1a"/>
+            <circle cx="61" cy="50" r="2.5" fill="#fff"/>
+            <circle cx="93" cy="50" r="2.5" fill="#fff"/>
+            <!-- Freckles -->
+            <circle cx="60" cy="68" r="2" fill="#D08B6F"/>
+            <circle cx="68" cy="70" r="2" fill="#D08B6F"/>
+            <circle cx="92" cy="70" r="2" fill="#D08B6F"/>
+            <circle cx="100" cy="68" r="2" fill="#D08B6F"/>
+            <path d="M68 68 Q80 76, 92 68" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="char-name">SPARK</span>
+        <span class="char-role">Cartoon Explorer</span>
+        <span class="char-theme">CARTOON THEME</span>
+      </div>
+
+      <!-- Fantasy -->
+      <div class="char-card">
+        <div class="char-svg-wrap">
+          <svg viewBox="0 0 160 170" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="80" cy="165" rx="38" ry="7" fill="#00000033"/>
+            <!-- Robe -->
+            <path d="M56 84 L104 84 L116 165 L44 165Z" fill="#7D4DFF" stroke="#1a1a1a" stroke-width="2.5"/>
+            <path d="M56 90 L44 165 L56 165L66 105Z" fill="#4F2CA8" opacity="0.8"/>
+            <!-- Cloak -->
+            <path d="M58 84 Q28 110, 36 150" fill="#4F2CA8" stroke="#1a1a1a" stroke-width="2"/>
+            <!-- Staff -->
+            <line x1="130" y1="170" x2="130" y2="60" stroke="#8B5E3C" stroke-width="5" stroke-linecap="round"/>
+            <circle cx="130" cy="54" r="12" fill="#FACC15" stroke="#1a1a1a" stroke-width="2.5"/>
+            <path d="M124 54 Q130 44, 136 54" fill="#ffffff" opacity="0.5"/>
+            <!-- Arms -->
+            <path d="M58 86 Q40 96, 38 120" fill="none" stroke="#7D4DFF" stroke-width="12" stroke-linecap="round"/>
+            <path d="M102 86 Q120 90, 128 102" fill="none" stroke="#7D4DFF" stroke-width="12" stroke-linecap="round"/>
+            <circle cx="34" cy="122" r="9" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="130" cy="106" r="9" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <!-- Belt -->
+            <rect x="60" y="104" width="40" height="8" rx="4" fill="#2DD4BF" stroke="#1a1a1a" stroke-width="2"/>
+            <!-- Neck -->
+            <rect x="72" y="68" width="16" height="18" rx="6" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2"/>
+            <!-- Head -->
+            <ellipse cx="80" cy="48" rx="34" ry="38" fill="#F4C59B" stroke="#1a1a1a" stroke-width="2.5"/>
+            <!-- Hat -->
+            <path d="M46 42 Q80 -16, 114 42Z" fill="#4F2CA8" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="80" cy="42" rx="38" ry="10" fill="#7D4DFF" stroke="#1a1a1a" stroke-width="2"/>
+            <circle cx="80" cy="14" r="5" fill="#FACC15" stroke="#1a1a1a" stroke-width="1.5"/>
+            <!-- Eyes -->
+            <ellipse cx="66" cy="52" rx="10" ry="12" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="94" cy="52" rx="10" ry="12" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+            <ellipse cx="66" cy="54" rx="6" ry="8" fill="#7D4DFF"/>
+            <ellipse cx="94" cy="54" rx="6" ry="8" fill="#7D4DFF"/>
+            <circle cx="66" cy="52" r="3.5" fill="#1a1a1a"/>
+            <circle cx="94" cy="52" r="3.5" fill="#1a1a1a"/>
+            <circle cx="63" cy="48" r="2" fill="#fff"/>
+            <circle cx="91" cy="48" r="2" fill="#fff"/>
+            <path d="M72 64 Q80 70, 88 64" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- Stars -->
+            <text x="14" y="36" font-size="14" fill="#FACC15">✦</text>
+            <text x="140" y="44" font-size="10" fill="#2DD4BF">✦</text>
+          </svg>
+        </div>
+        <span class="char-name">QUEST</span>
+        <span class="char-role">Fantasy Ranger</span>
+        <span class="char-theme">FANTASY THEME</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="cta-text">
+      <h2>READY TO MAKE YOUR<br>FIRST COMIC?</h2>
+      <p>Free to use. No design skills needed. Just paste &amp; go!</p>
+    </div>
+    <div class="cta-actions">
+      <button type="button" class="btn-cta btn-cta-primary" onclick="showPage('pg-signup')">START FOR FREE</button>
+      <button type="button" class="btn-cta btn-cta-secondary" onclick="showPage('pg-login')">LOG IN</button>
+    </div>
+  </section>
+
+  <footer>2026 · COMINOTE · BECAUSE LEARNING SHOULD NOT BE BORING ⚡</footer>
+</div>
+
+<!-- ═══════════════ LOGIN PAGE ═══════════════ -->
+<div id="pg-login" class="page">
+  <div class="auth-wrap">
+    <button class="back-btn" type="button" onclick="showPage('pg-home')">← Back to Home</button>
+    <div class="auth-center">
+      <div class="auth-card">
+        <div class="logo-top">
+          <div class="logo-box logo-static" style="display:inline-block;"><span>COMINOTE</span></div>
+        </div>
+        <h2>WELCOME BACK!</h2>
+        <p class="sub">Log in to your account</p>
+        <div class="fg"><label>Email</label><input id="login-email" type="email" placeholder="you@example.com"></div>
+        <div class="fg"><label>Password</label><input id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()"></div>
+        <button class="btn-full" type="button" onclick="doLogin()">LOG IN</button>
+        <p id="login-msg" class="auth-message"></p>
+        <div class="divider">OR</div>
+        <p class="auth-switch">No account? <button type="button" class="inline-link" onclick="showPage('pg-signup')">Sign up free</button></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SIGNUP PAGE ═══════════════ -->
+<div id="pg-signup" class="page">
+  <div class="auth-wrap">
+    <button class="back-btn" type="button" onclick="showPage('pg-home')">← Back to Home</button>
+    <div class="auth-center">
+      <div class="auth-card">
+        <div class="logo-top">
+          <div class="logo-box logo-static" style="display:inline-block;"><span>COMINOTE</span></div>
+        </div>
+        <h2>JOIN THE CREW!</h2>
+        <p class="sub">Create your free account</p>
+        <div class="fg"><label>Full Name</label><input id="signup-name" type="text" placeholder="Your name"></div>
+        <div class="fg"><label>Email</label><input id="signup-email" type="email" placeholder="you@example.com"></div>
+        <div class="fg"><label>Password</label><input id="signup-pass" type="password" placeholder="Min. 6 characters"></div>
+        <div class="fg"><label>Confirm Password</label><input id="signup-pass2" type="password" placeholder="Repeat password" onkeydown="if(event.key==='Enter') doSignup()"></div>
+        <button class="btn-full" type="button" onclick="doSignup()">CREATE ACCOUNT</button>
+        <p id="signup-msg" class="auth-message"></p>
+        <p class="auth-switch">Already have an account? <button type="button" class="inline-link" onclick="showPage('pg-login')">Log in</button></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DASHBOARD PAGE ═══════════════ -->
+<div id="pg-dash" class="page">
+  <div class="dash-wrap">
+    <div class="dash-nav">
       <button class="logo-box" type="button" onclick="showPage('pg-home')"><span>COMINOTE</span></button>
-      <div class="nav-links">
-        <a href="#how-it-works">How It Works</a>
-        <button type="button" class="nav-button-link" onclick="showPage('pg-login')">Login</button>
-        <button type="button" class="btn-primary small-btn" onclick="showPage('pg-signup')">Sign Up Free</button>
-      </div>
-    </nav>
-
-    <section class="hero">
-      <div class="hero-text">
-        <div class="badge">NOTES TO COMICS</div>
-        <h1>YOUR NOTES,<br><span>NOW A COMIC!</span></h1>
-        <p>Paste your study notes or upload a file and Cominote turns it into a fun comic-style story that is easier to read and remember.</p>
-        <div class="hero-btns">
-          <button type="button" class="btn-primary" onclick="showPage('pg-signup')">GET STARTED</button>
-          <button type="button" class="btn-outline" onclick="showPage('pg-login')">Log In</button>
+      <div class="dash-user">
+        <span class="user-badge" id="user-avatar">CN</span>
+        <div class="dash-user-text">
+          <span id="dash-username">Comic Learner</span>
+          <small id="dash-email">Signed in</small>
         </div>
-      </div>
-
-      <div class="hero-art">
-        <div class="comic-frame">
-          <div class="panel py">
-            <div class="dots"></div>
-            <div>
-              <div class="bubble" style="margin-bottom:10px;">
-                <div class="ptxt" style="font-size:.82rem;">Student pastes<br>boring notes...</div>
-              </div>
-              <div class="hero-emoji">📄 → ?</div>
-            </div>
-          </div>
-          <div class="panel pr">
-            <div class="dots"></div>
-            <div class="ptxt big">POW!</div>
-          </div>
-          <div class="panel pt">
-            <div class="dots"></div>
-            <div class="ptxt wh">COMIC<br>STORY<br>CREATED!</div>
-          </div>
-          <div class="panel pb">
-            <div class="dots"></div>
-            <div class="bubble">
-              <div class="ptxt" style="font-size:.82rem;color:var(--b);">I actually<br>understand<br>this now!</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="how" id="how-it-works">
-      <h2>HOW IT WORKS</h2>
-      <div class="steps">
-        <div class="step">
-          <span class="step-num">01</span>
-          <h3>Paste Your Notes</h3>
-          <p>Copy your lesson notes or upload a `.txt` / `.pdf` / `.docx` file and drop it in.</p>
-        </div>
-        <div class="step">
-          <span class="step-num">02</span>
-          <h3>We Pick the Main Ideas</h3>
-          <p>Cominote reads your content and turns the important points into a simple story flow.</p>
-        </div>
-        <div class="step">
-          <span class="step-num">03</span>
-          <h3>Your Comic Appears</h3>
-          <p>You get a comic-style strip you can read on screen and download.</p>
-        </div>
-        <div class="step">
-          <span class="step-num">04</span>
-          <h3>Learn Faster</h3>
-          <p>Visual stories make revision feel easier, lighter, and more memorable.</p>
-        </div>
-      </div>
-    </section>
-
-    <footer>2026. SGS.</footer>
-  </div>
-
-  <div id="pg-login" class="page">
-    <div class="auth-wrap">
-      <button class="back-btn" type="button" onclick="showPage('pg-home')">← Back to Home</button>
-      <div class="auth-center">
-        <div class="auth-card">
-          <div class="logo-top">
-            <div class="logo-box logo-static"><span>COMINOTE</span></div>
-          </div>
-          <h2>WELCOME BACK!</h2>
-          <p class="sub">Log in to your account</p>
-          <div class="fg">
-            <label>Email</label>
-            <input id="login-email" type="email" placeholder="you@example.com">
-          </div>
-          <div class="fg">
-            <label>Password</label>
-            <input id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()">
-          </div>
-          <button class="btn-full" type="button" onclick="doLogin()">LOG IN</button>
-          <p id="login-msg" class="auth-message"></p>
-          <div class="divider">OR</div>
-          <p class="auth-switch">No account? <button type="button" class="inline-link" onclick="showPage('pg-signup')">Sign up free</button></p>
-        </div>
+        <button class="btn-outline" type="button" onclick="doLogout()">Log Out</button>
       </div>
     </div>
-  </div>
 
-  <div id="pg-signup" class="page">
-    <div class="auth-wrap">
-      <button class="back-btn" type="button" onclick="showPage('pg-home')">← Back to Home</button>
-      <div class="auth-center">
-        <div class="auth-card">
-          <div class="logo-top">
-            <div class="logo-box logo-static"><span>COMINOTE</span></div>
-          </div>
-          <h2>JOIN THE CREW!</h2>
-          <p class="sub">Create your free account</p>
-          <div class="fg">
-            <label>Full Name</label>
-            <input id="signup-name" type="text" placeholder="Your name">
-          </div>
-          <div class="fg">
-            <label>Email</label>
-            <input id="signup-email" type="email" placeholder="you@example.com">
-          </div>
-          <div class="fg">
-            <label>Password</label>
-            <input id="signup-pass" type="password" placeholder="Min. 6 characters">
-          </div>
-          <div class="fg">
-            <label>Confirm Password</label>
-            <input id="signup-pass2" type="password" placeholder="Repeat password" onkeydown="if(event.key==='Enter') doSignup()">
-          </div>
-          <button class="btn-full" type="button" onclick="doSignup()">CREATE ACCOUNT</button>
-          <p id="signup-msg" class="auth-message"></p>
-          <p class="auth-switch">Already have an account? <button type="button" class="inline-link" onclick="showPage('pg-login')">Log in</button></p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="pg-dash" class="page">
-    <div class="dash-wrap">
-      <div class="dash-nav">
-        <button class="logo-box" type="button" onclick="showPage('pg-home')"><span>COMINOTE</span></button>
-        <div class="dash-user">
-          <span class="user-badge" id="user-avatar">CN</span>
-          <div class="dash-user-text">
-            <span id="dash-username">Comic Learner</span>
-            <small id="dash-email">Signed in</small>
-          </div>
-          <button class="btn-outline" type="button" onclick="doLogout()">Log Out</button>
-        </div>
+    <div class="dash-body">
+      <div class="dash-header">
+        <h2>CREATE YOUR COMIC</h2>
+        <p class="welcome">✨ Select a theme, add your study notes or upload a PDF, and watch Cominote transform them into a vibrant animated comic strip</p>
       </div>
 
-      <div class="dash-body">
-        <div class="dash-header">
-          <div>
-            <h2>CREATE YOUR COMIC</h2>
-            <p class="welcome">✨ Select a theme, add your study notes or upload a PDF, and watch Cominote transform them into a vibrant, animated comic strip</p>
+      <div class="dash-grid">
+        <div class="dash-card primary-card">
+          <div class="card-header">
+            <h3>📚 Your Story</h3>
+            <span class="card-badge">comics with dataset characters</span>
+          </div>
+
+          <div class="field-group">
+            <label class="field">
+              <span class="field-label">📖 Comic Title</span>
+              <input id="project-title" type="text" maxlength="80" placeholder="e.g., The Amazing Adventures of Photosynthesis">
+            </label>
+          </div>
+
+          <div class="theme-browser field-group">
+            <label class="field">
+              <span class="field-label">🎨 Pick a Visual Theme</span>
+              <select id="theme-select" class="theme-selector">
+                <option value="">🎯 Choose your theme style...</option>
+              </select>
+              <small id="theme-hint" class="field-hint">🌈 Each theme has unique characters, colors, and visual style from our dataset</small>
+            </label>
+
+            <article id="theme-summary-card" class="theme-summary empty" data-theme-profile="default">
+              <div class="theme-summary-header">
+                <strong id="theme-name">✨ Select a theme to begin</strong>
+              </div>
+              <div class="theme-summary-hero">
+                <div id="theme-character-stage" class="theme-character-stage" data-theme-profile="default">
+                  <span id="theme-badge" class="theme-stage-badge">Comic Preview</span>
+                  <img id="theme-character-image" class="theme-character-image" alt="Selected theme character preview">
+                  <span id="theme-sound-effect" class="theme-stage-sfx">POP!</span>
+                </div>
+                <div class="theme-character-copy">
+                  <span class="theme-kicker">Featured Character</span>
+                  <strong id="theme-character-name">Theme Explorer</strong>
+                  <p id="theme-character-description">Choose a theme to see its featured hero, scene styling, and comic energy.</p>
+                  <div class="theme-feature-strip">
+                    <span id="theme-background-pill" class="theme-pill">🌆 Background: --</span>
+                    <span id="theme-elements-pill" class="theme-pill">💥 Elements: --</span>
+                  </div>
+                </div>
+              </div>
+              <p id="theme-preview">Choose a theme to see character styles, color palettes, panel layouts, and visual effects tailored to your story.</p>
+              <div class="theme-pills">
+                <span id="theme-visual-pill" class="theme-pill">🎭 Visual: --</span>
+                <span id="theme-subject-pill" class="theme-pill">📚 Topic: --</span>
+                <span id="theme-style-pill" class="theme-pill">🎬 Style: --</span>
+                <span id="theme-cast-pill" class="theme-pill">👥 Characters: --</span>
+                <span id="theme-font-pill" class="theme-pill">🔤 Fonts: --</span>
+                <span id="theme-layout-pill" class="theme-pill">📐 Panels: --</span>
+                <span id="theme-size-pill" class="theme-pill">📖 Pool: --</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="field-group">
+            <label class="field">
+              <span class="field-label">✍️ Paste Your Notes</span>
+              <textarea id="notes-input" maxlength="25000000" placeholder="Paste study notes, lesson content, or any text. Or leave empty and upload a file instead..." class="notes-textarea"></textarea>
+              <small id="char-count" class="field-hint">0 / 25,000,000 characters</small>
+            </label>
+          </div>
+
+          <div class="field-group">
+            <label class="upload-card modern-upload" for="notes-file">
+              <div class="upload-icon">📤</div>
+              <div class="upload-text">
+                <strong>Upload Your File</strong>
+                <span>PDF, DOCX, or TXT (max 50 MB) — or paste text above</span>
+              </div>
+              <input id="notes-file" type="file" accept=".txt,.pdf,.docx">
+            </label>
+            <p id="file-feedback" class="inline-feedback">No file selected • Ready to upload</p>
+          </div>
+
+          <div class="composer-actions">
+            <button id="generate-btn" class="btn-primary large-btn" type="button" onclick="generateComic()">🚀 GENERATE COMIC PDF</button>
+            <button class="btn-secondary" type="button" onclick="clearComposer()">↺ Clear All</button>
           </div>
         </div>
 
-        <div class="dash-grid">
-          <div class="dash-card primary-card">
-            <div class="card-header">
-              <h3>📚 Your Story</h3>
-              <span class="card-badge">comics with dataset characters</span>
+        <div class="dash-side">
+          <div class="dash-card">
+            <h3>Creating Your Comic</h3>
+            <div class="status-meter">
+              <div id="status-progress" class="status-progress"></div>
             </div>
-
-            <div class="field-group">
-              <label class="field">
-                <span class="field-label">📖 Comic Title</span>
-                <input id="project-title" type="text" maxlength="80" placeholder="e.g., The Amazing Adventures of Photosynthesis">
-              </label>
+            <div id="status-steps" class="status-steps">
+              <article class="status-step is-idle" data-step="0"><strong>Getting Ready</strong><span>Checking your notes and file.</span></article>
+              <article class="status-step is-idle" data-step="1"><strong>Reading Notes</strong><span>Finding the important parts.</span></article>
+              <article class="status-step is-idle" data-step="2"><strong>Making the Story</strong><span>Turning your notes into a comic flow.</span></article>
+              <article class="status-step is-idle" data-step="3"><strong>Finishing Up</strong><span>Preparing your comic to view and download.</span></article>
             </div>
-
-            <div class="theme-browser field-group">
-              <label class="field">
-                <span class="field-label">🎨 Pick a Visual Theme</span>
-                <select id="theme-select" class="theme-selector">
-                  <option value="">🎯 Choose your theme style...</option>
-                </select>
-                <small id="theme-hint" class="field-hint">🌈 Each theme has unique characters, colors, and visual style from our dataset</small>
-              </label>
-
-              <article id="theme-summary-card" class="theme-summary empty" data-theme-profile="default">
-                <div class="theme-summary-header">
-                  <strong id="theme-name">✨ Select a theme to begin</strong>
-                </div>
-                <div class="theme-summary-hero">
-                  <div id="theme-character-stage" class="theme-character-stage" data-theme-profile="default">
-                    <span id="theme-badge" class="theme-stage-badge">Comic Preview</span>
-                    <img id="theme-character-image" class="theme-character-image" alt="Selected theme character preview">
-                    <span id="theme-sound-effect" class="theme-stage-sfx">POP!</span>
-                  </div>
-                  <div class="theme-character-copy">
-                    <span class="theme-kicker">Featured Character</span>
-                    <strong id="theme-character-name">Theme Explorer</strong>
-                    <p id="theme-character-description">Choose a theme to see its featured hero, scene styling, and comic energy.</p>
-                    <div class="theme-feature-strip">
-                      <span id="theme-background-pill" class="theme-pill theme-pill-background">🌆 Background: --</span>
-                      <span id="theme-elements-pill" class="theme-pill theme-pill-elements">💥 Elements: --</span>
-                    </div>
-                  </div>
-                </div>
-                <p id="theme-preview">Choose a theme to see character styles, color palettes, panel layouts, and visual effects tailored to your story.</p>
-                <div class="theme-pills">
-                  <span id="theme-visual-pill" class="theme-pill theme-pill-visual">🎭 Visual: --</span>
-                  <span id="theme-subject-pill" class="theme-pill theme-pill-subject">📚 Topic: --</span>
-                  <span id="theme-style-pill" class="theme-pill theme-pill-style">🎬 Style: --</span>
-                  <span id="theme-cast-pill" class="theme-pill theme-pill-cast">👥 Characters: --</span>
-                  <span id="theme-font-pill" class="theme-pill theme-pill-font">🔤 Fonts: --</span>
-                  <span id="theme-layout-pill" class="theme-pill theme-pill-layout">📐 Panels: --</span>
-                  <span id="theme-size-pill" class="theme-pill theme-pill-size">📖 Pool: --</span>
-                </div>
-              </article>
+            <div class="status-note">
+              <strong id="status-title">Ready to begin</strong>
+              <p id="status-text">Choose a theme, add text or a file, and click Generate Comic PDF.</p>
             </div>
-
-            <div class="field-group">
-              <label class="field">
-                <span class="field-label">✍️ Paste Your Notes</span>
-                <textarea
-                  id="notes-input"
-                  maxlength="25000000"
-                  placeholder="Paste study notes, lesson content, or any text. Or leave empty and upload a file instead..."
-                  class="notes-textarea"
-                ></textarea>
-                <small id="char-count" class="field-hint">0 / 25,000,000 characters</small>
-              </label>
-            </div>
-
-            <div class="field-group">
-              <label class="upload-card modern-upload" for="notes-file">
-                <div class="upload-icon">📤</div>
-                <div class="upload-text">
-                  <strong>Upload Your File</strong>
-                  <span>PDF, DOCX, or TXT (max 50 MB) — or paste text above</span>
-                </div>
-                <input id="notes-file" type="file" accept=".txt,.pdf,.docx">
-              </label>
-              <p id="file-feedback" class="inline-feedback">No file selected • Ready to upload</p>
-            </div>
-
-            <div class="composer-actions">
-              <button id="generate-btn" class="btn-primary large-btn" type="button" onclick="generateComic()">🚀 GENERATE COMIC</button>
-              <button class="btn-secondary" type="button" onclick="clearComposer()">↺ Clear All</button>
+            <div id="summary-board" class="summary-board">
+              <article><span>Panels</span><strong id="summary-panels">0</strong></article>
+              <article><span>From</span><strong id="summary-source">Idle</strong></article>
+              <article><span>Chunks</span><strong id="summary-chunks">0</strong></article>
             </div>
           </div>
 
-          <div class="dash-side">
-            <div class="dash-card">
-              <h3>Creating Your Comic</h3>
-              <div class="status-meter">
-                <div id="status-progress" class="status-progress"></div>
-              </div>
-              <div id="status-steps" class="status-steps">
-                <article class="status-step is-idle" data-step="0">
-                  <strong>Getting Ready</strong>
-                  <span>Checking your notes and file.</span>
-                </article>
-                <article class="status-step is-idle" data-step="1">
-                  <strong>Reading Notes</strong>
-                  <span>Finding the important parts.</span>
-                </article>
-                <article class="status-step is-idle" data-step="2">
-                  <strong>Making the Story</strong>
-                  <span>Turning your notes into a comic flow.</span>
-                </article>
-                <article class="status-step is-idle" data-step="3">
-                  <strong>Finishing Up</strong>
-                  <span>Preparing your comic to view and download.</span>
-                </article>
-              </div>
-              <div class="status-note">
-                <strong id="status-title">Ready to begin</strong>
-                <p id="status-text">Choose a theme, add text or a file, and click Generate Comic PDF.</p>
-              </div>
-              <div id="summary-board" class="summary-board">
-                <article>
-                  <span>Panels</span>
-                  <strong id="summary-panels">0</strong>
-                </article>
-                <article>
-                  <span>From</span>
-                  <strong id="summary-source">Idle</strong>
-                </article>
-                <article>
-                  <span>Chunks</span>
-                  <strong id="summary-chunks">0</strong>
-                </article>
-              </div>
-            </div>
-
-            <div class="dash-card">
-              <h3>Your Comic</h3>
-              <div id="comic-preview" class="comic-preview empty">
-                <div class="preview-placeholder">
-                  <div id="preview-theme-stage" class="preview-theme-stage is-hidden" data-theme-profile="default">
-                    <img id="preview-theme-image" class="preview-theme-image" alt="Selected theme comic placeholder">
-                    <span id="preview-theme-sound" class="comic-sound-effect preview-theme-sound">POP!</span>
-                  </div>
-                  <strong id="preview-placeholder-title">No comic yet</strong>
-                  <p id="preview-placeholder-text">Your comic will appear here after it is ready.</p>
+          <div class="dash-card">
+            <h3>Your Comic</h3>
+            <div id="comic-preview" class="comic-preview empty">
+              <div class="preview-placeholder">
+                <div id="preview-theme-stage" class="preview-theme-stage is-hidden" data-theme-profile="default">
+                  <img id="preview-theme-image" class="preview-theme-image" alt="Selected theme comic placeholder">
+                  <span id="preview-theme-sound" class="comic-sound-effect preview-theme-sound">POP!</span>
                 </div>
-                <img id="comic-image" alt="Generated Cominote comic preview">
+                <strong id="preview-placeholder-title">No comic yet</strong>
+                <p id="preview-placeholder-text">Your comic will appear here after it is ready.</p>
               </div>
-              <div class="output-meta">
-                <strong id="comic-title">Waiting for your first comic</strong>
-                <p id="comic-caption">Your finished comic preview and PDF download will show up here.</p>
-              </div>
-              <div class="output-actions">
-                <button id="download-pdf" class="btn-primary" type="button" disabled onclick="downloadComic('pdf')">Download PDF</button>
-              </div>
+              <img id="comic-image" alt="Generated Cominote comic preview">
             </div>
+            <div class="output-meta">
+              <strong id="comic-title">Waiting for your first comic</strong>
+              <p id="comic-caption">Your finished comic preview and PDF download will show up here.</p>
+            </div>
+            <div class="output-actions">
+              <button id="download-pdf" class="btn-primary" type="button" disabled onclick="downloadComic('pdf')">⬇ Download PDF</button>
+            </div>
+          </div>
 
-            <div class="dash-card history-card">
-              <h3>Recent Comics</h3>
-              <div id="history-list" class="history-list empty-state">
-                <p>Your recent comics will appear here.</p>
-              </div>
+          <div class="dash-card history-card">
+            <h3>Recent Comics</h3>
+            <div id="history-list" class="history-list empty-state">
+              <p>Your recent comics will appear here.</p>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <script src="/config.js?v=20260421-theme-render-fix"></script>
-  <script type="module" src="/app.js?v=20260421-theme-render-fix"></script>
+<script src="/config.js?v=20260421-theme-render-fix"></script>
+<script type="module" src="/app.js?v=20260421-theme-render-fix"></script>
 </body>
 </html>
