@@ -170,62 +170,81 @@
       </div>
 
       <div class="dash-body">
-        <h2>MAKE YOUR COMIC</h2>
-        <p class="welcome">Select a theme, upload a PDF or paste text, and Cominote will turn it into a cleaner comic-style PDF with a live preview before download.</p>
+        <div class="dash-header">
+          <div>
+            <h2>CREATE YOUR COMIC</h2>
+            <p class="welcome">✨ Select a theme, add your study notes or upload a PDF, and watch Cominote transform them into a vibrant, animated comic strip</p>
+          </div>
+        </div>
 
         <div class="dash-grid">
-          <div class="dash-card">
-            <h3>Start Here</h3>
+          <div class="dash-card primary-card">
+            <div class="card-header">
+              <h3>📚 Your Story</h3>
+              <span class="card-badge">comics with dataset characters</span>
+            </div>
 
-            <label class="field">
-              <span>Title (Optional)</span>
-              <input id="project-title" type="text" maxlength="80" placeholder="Example: Avengers Machine Learning Comic">
-            </label>
-
-            <div class="theme-browser">
+            <div class="field-group">
               <label class="field">
-                <span>Select Your Favourite Theme</span>
-                <select id="theme-select">
-                  <option value="">Choose a theme</option>
+                <span class="field-label">📖 Comic Title</span>
+                <input id="project-title" type="text" maxlength="80" placeholder="e.g., The Amazing Adventures of Photosynthesis">
+              </label>
+            </div>
+
+            <div class="theme-browser field-group">
+              <label class="field">
+                <span class="field-label">🎨 Pick a Visual Theme</span>
+                <select id="theme-select" class="theme-selector">
+                  <option value="">🎯 Choose your theme style...</option>
                 </select>
-                <small id="theme-hint" class="field-hint">Themes are loaded from your JSON files. Pick one theme, then paste text or upload a file to generate the comic PDF.</small>
+                <small id="theme-hint" class="field-hint">🌈 Each theme has unique characters, colors, and visual style from our dataset</small>
               </label>
 
               <article id="theme-summary-card" class="theme-summary empty" data-theme-profile="default">
-                <strong id="theme-name">No theme selected</strong>
-                <p id="theme-preview">Pick one theme first. Then paste text or upload a PDF, DOCX, or TXT file and Cominote will build the comic around that world, tone, and visual style.</p>
+                <div class="theme-summary-header">
+                  <strong id="theme-name">✨ Select a theme to begin</strong>
+                </div>
+                <p id="theme-preview">Choose a theme to see character styles, color palettes, panel layouts, and visual effects tailored to your story.</p>
                 <div class="theme-pills">
-                  <span id="theme-visual-pill" class="theme-pill">Visual Theme: --</span>
-                  <span id="theme-subject-pill" class="theme-pill">Topic: --</span>
-                  <span id="theme-style-pill" class="theme-pill">Style: --</span>
-                  <span id="theme-cast-pill" class="theme-pill">Characters: --</span>
-                  <span id="theme-font-pill" class="theme-pill">Fonts: --</span>
-                  <span id="theme-layout-pill" class="theme-pill">Panels: --</span>
-                  <span id="theme-size-pill" class="theme-pill">Story Pool: --</span>
+                  <span id="theme-visual-pill" class="theme-pill theme-pill-visual">🎭 Visual: --</span>
+                  <span id="theme-subject-pill" class="theme-pill theme-pill-subject">📚 Topic: --</span>
+                  <span id="theme-style-pill" class="theme-pill theme-pill-style">🎬 Style: --</span>
+                  <span id="theme-cast-pill" class="theme-pill theme-pill-cast">👥 Characters: --</span>
+                  <span id="theme-font-pill" class="theme-pill theme-pill-font">🔤 Fonts: --</span>
+                  <span id="theme-layout-pill" class="theme-pill theme-pill-layout">📐 Panels: --</span>
+                  <span id="theme-size-pill" class="theme-pill theme-pill-size">📖 Pool: --</span>
                 </div>
               </article>
             </div>
 
-            <label class="field">
-              <span>Paste Text</span>
-              <textarea
-                id="notes-input"
-                maxlength="25000000"
-                placeholder="Paste your text here, or leave this empty and upload a PDF / DOCX / TXT file..."
-              ></textarea>
-              <small id="char-count" class="field-hint">0 / 25000000 characters</small>
-            </label>
+            <div class="field-group">
+              <label class="field">
+                <span class="field-label">✍️ Paste Your Notes</span>
+                <textarea
+                  id="notes-input"
+                  maxlength="25000000"
+                  placeholder="Paste study notes, lesson content, or any text. Or leave empty and upload a file instead..."
+                  class="notes-textarea"
+                ></textarea>
+                <small id="char-count" class="field-hint">0 / 25,000,000 characters</small>
+              </label>
+            </div>
 
-            <label class="upload-card" for="notes-file">
-              <input id="notes-file" type="file" accept=".txt,.pdf,.docx">
-              <strong>Upload `.pdf` / `.docx` / `.txt`</strong>
-              <span>Maximum size: 50 MB. Upload content and Cominote will convert it into a themed comic PDF.</span>
-            </label>
-            <p id="file-feedback" class="inline-feedback">No file selected yet.</p>
+            <div class="field-group">
+              <label class="upload-card modern-upload" for="notes-file">
+                <div class="upload-icon">📤</div>
+                <div class="upload-text">
+                  <strong>Upload Your File</strong>
+                  <span>PDF, DOCX, or TXT (max 50 MB) — or paste text above</span>
+                </div>
+                <input id="notes-file" type="file" accept=".txt,.pdf,.docx">
+              </label>
+              <p id="file-feedback" class="inline-feedback">No file selected • Ready to upload</p>
+            </div>
 
             <div class="composer-actions">
-              <button id="generate-btn" class="btn-primary" type="button" onclick="generateComic()">GENERATE COMIC PDF</button>
-              <button class="btn-outline" type="button" onclick="clearComposer()">Clear</button>
+              <button id="generate-btn" class="btn-primary large-btn" type="button" onclick="generateComic()">🚀 GENERATE COMIC</button>
+              <button class="btn-secondary" type="button" onclick="clearComposer()">↺ Clear All</button>
             </div>
           </div>
 

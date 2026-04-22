@@ -5,9 +5,11 @@ This build now includes the full mini-project flow described in your documents:
 
 - Firebase Authentication for sign up and login
 - A single-page dashboard with Input, Processing Status, and Output panels
+- Theme dataset integration from the `JSON/` folder
 - Flask API endpoints for generation, image retrieval, and downloads
-- `.txt` and `.pdf` intake
-- Rule-based concept extraction, relation hints, and multi-panel comic sequencing
+- `.txt`, `.pdf`, and `.docx` intake
+- Background job generation with progress polling for long-running comic builds
+- Chunk-aware concept extraction, relation hints, and multi-panel comic sequencing
 - Programmatic comic rendering with PNG and JPEG export
 - Recent comic history stored per signed-in user in local browser storage
 
@@ -18,6 +20,8 @@ This build now includes the full mini-project flow described in your documents:
 - `app.js` - Firebase auth, routing, form handling, API calls, history, and output rendering
 - `app.py` - Flask server and REST endpoints
 - `cominote_engine.py` - input validation, text/PDF handling, concept extraction, narrative generation, and comic rendering
+- `JSON/` - theme datasets that can now be selected directly from the dashboard
+- `render.yaml` - one-click Render deployment config for the full Flask app
 
 ## Run Locally
 
@@ -49,9 +53,33 @@ This build now includes the full mini-project flow described in your documents:
    python3 app.py
    ```
 
-5. Open [http://127.0.0.1:5000](http://127.0.0.1:5000)
+5. Open [http://127.0.0.1:5001](http://127.0.0.1:5001)
+
+## Theme Datasets
+
+The dashboard now reads every `.json` file inside `JSON/` and exposes it as a selectable theme dataset.
+
+- Pick a theme dataset directly from the UI
+- Search by title from the dashboard
+- Auto-match subject and style from the selected dataset
+- Generate a comic from the dataset alone, or combine it with pasted notes / uploads
 
 ## Deployment
+
+### Recommended: Render
+
+This repo now includes `render.yaml`, so the easiest public deployment is to deploy the entire Flask app to Render.
+
+1. Push this repo to GitHub.
+2. In Render, choose **New +** -> **Blueprint**.
+3. Connect the repo and Render will detect `render.yaml`.
+4. Deploy. Render will install `requirements.txt` and run:
+
+   ```bash
+   gunicorn app:app --bind 0.0.0.0:$PORT
+   ```
+
+Because Flask already serves the frontend files, the Render URL becomes your single public app link.
 
 ### GitHub Repository
 
@@ -106,7 +134,9 @@ Examples:
 
 ## API Endpoints
 
+- `GET /api/themes`
 - `POST /api/generate`
+- `GET /api/jobs/<job_id>`
 - `GET /api/comics/<comic_id>`
 - `GET /api/comics/<comic_id>/image`
 - `GET /api/download/<comic_id>?format=png`
