@@ -269,6 +269,36 @@
         "accent": "#2dd4bf",
         "floor": "#5f6f52"
       }
+    },
+    {
+      "id": "BG_HORROR_HALL",
+      "name": "Moonlit Mystery Hall",
+      "category": "school",
+      "theme_fit": ["horror"],
+      "subject_fit": ["all"],
+      "prompt_fragment": "cinematic moonlit school hall with fog, spotlight shadows, and suspense panels",
+      "tags": ["horror", "mystery", "fog", "moonlit", "shadow"],
+      "palette": {
+        "primary": "#2f3545",
+        "secondary": "#e8eef8",
+        "accent": "#7f1d1d",
+        "floor": "#4b5563"
+      }
+    },
+    {
+      "id": "BG_HORROR_STREET",
+      "name": "Foggy Study Street",
+      "category": "city",
+      "theme_fit": ["horror"],
+      "subject_fit": ["literature", "history", "science"],
+      "prompt_fragment": "foggy comic street with neon edge light, long shadows, and mystery atmosphere",
+      "tags": ["horror", "street", "fog", "neon", "mystery"],
+      "palette": {
+        "primary": "#1f2937",
+        "secondary": "#f3e8ff",
+        "accent": "#8b5cf6",
+        "floor": "#374151"
+      }
     }
   ]
 }

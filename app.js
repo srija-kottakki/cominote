@@ -50,6 +50,141 @@ const STATUS_STEPS = [
   },
 ];
 
+const THEME_CHARACTER_FALLBACKS = [
+  {
+    keys: ["pokemon", "pikachu"],
+    name: "Pikachu",
+    variant: "electric-mascot",
+    category: "mascot",
+    background: "Thunder Meadow",
+    sound: "PIKA!",
+    elements: ["lightning sparks", "puffy clouds", "electric speed lines"],
+    palette: { hair: "#2f2a26", skin: "#f5d34c", costume_primary: "#f5c518", costume_accent: "#ef4444", eye: "#1f2937" },
+    ui: { accent: "#f5c518", accent_2: "#ef4444", accent_3: "#3b82f6", surface: "#fffbe6", bg_start: "#fff3ab", bg_end: "#ffe7a3", glow: "rgba(245, 197, 24, 0.26)" },
+  },
+  {
+    keys: ["marvel", "avengers"],
+    name: "Spider-Man",
+    variant: "web-hero",
+    category: "student",
+    background: "Skyline Command Deck",
+    sound: "THWIP!",
+    elements: ["web trails", "repulsor glows", "impact bursts"],
+    palette: { hair: "#111827", skin: "#efc39b", costume_primary: "#e11d48", costume_accent: "#2563eb", eye: "#ffffff" },
+    ui: { accent: "#e11d48", accent_2: "#2563eb", accent_3: "#f59e0b", surface: "#fff3ef", bg_start: "#ffe1db", bg_end: "#edf4ff", glow: "rgba(225, 29, 72, 0.24)" },
+  },
+  {
+    keys: ["naruto", "uzumaki"],
+    name: "Naruto Uzumaki",
+    variant: "ninja-hero",
+    category: "student",
+    background: "Hidden Leaf Rooftops",
+    sound: "DATTEBAYO!",
+    elements: ["chakra swirls", "leaf emblems", "speed streaks"],
+    palette: { hair: "#facc15", skin: "#efc39b", costume_primary: "#f97316", costume_accent: "#1d4ed8", eye: "#2563eb" },
+    ui: { accent: "#f97316", accent_2: "#2563eb", accent_3: "#facc15", surface: "#fff7ef", bg_start: "#ffe1c7", bg_end: "#eef5ff", glow: "rgba(249, 115, 22, 0.24)" },
+  },
+  {
+    keys: ["dc", "batman", "gotham"],
+    name: "Batman",
+    variant: "dark-knight",
+    category: "teacher",
+    background: "Gotham Rooftop",
+    sound: "SWOOSH!",
+    elements: ["bat signals", "night skylines", "shadow captions"],
+    palette: { hair: "#111827", skin: "#edc39b", costume_primary: "#1f2937", costume_accent: "#facc15", eye: "#93c5fd" },
+    ui: { accent: "#111827", accent_2: "#1d4ed8", accent_3: "#facc15", surface: "#f5f7fb", bg_start: "#dce6ff", bg_end: "#f4f6fb", glow: "rgba(17, 24, 39, 0.18)" },
+  },
+  {
+    keys: ["dragon-ball", "dragon ball", "goku"],
+    name: "Goku",
+    variant: "saiyan-warrior",
+    category: "student",
+    background: "Sky Arena",
+    sound: "KAME!",
+    elements: ["energy aura", "impact rings", "battle speed lines"],
+    palette: { hair: "#1f2937", skin: "#efc39b", costume_primary: "#f97316", costume_accent: "#2563eb", eye: "#2563eb" },
+    ui: { accent: "#f97316", accent_2: "#2563eb", accent_3: "#fde047", surface: "#fff8ee", bg_start: "#ffe0bf", bg_end: "#e9f2ff", glow: "rgba(249, 115, 22, 0.24)" },
+  },
+  {
+    keys: ["space", "astronaut"],
+    name: "Astronaut Nova",
+    variant: "astronaut",
+    category: "student",
+    background: "Orbit Station",
+    sound: "ZOOM!",
+    elements: ["star fields", "orbit rings", "glow panels"],
+    palette: { hair: "#2f2a26", skin: "#efc39b", costume_primary: "#f8fafc", costume_accent: "#2563eb", eye: "#22d3ee" },
+    ui: { accent: "#2563eb", accent_2: "#7c3aed", accent_3: "#22d3ee", surface: "#f4f7ff", bg_start: "#dbeafe", bg_end: "#ede9fe", glow: "rgba(37, 99, 235, 0.22)" },
+  },
+  {
+    keys: ["jungle", "safari"],
+    name: "Leo the Lion",
+    variant: "lion",
+    category: "mascot",
+    background: "Sunlit Jungle Trail",
+    sound: "ROAR!",
+    elements: ["leaf frames", "paw prints", "sunny jungle rays"],
+    palette: { hair: "#7c2d12", skin: "#f4b75e", costume_primary: "#f59e0b", costume_accent: "#92400e", eye: "#166534" },
+    ui: { accent: "#16a34a", accent_2: "#f59e0b", accent_3: "#22c55e", surface: "#f6fff0", bg_start: "#d9f99d", bg_end: "#fff3c4", glow: "rgba(22, 163, 74, 0.2)" },
+  },
+  {
+    keys: ["pirate", "pirates", "treasure"],
+    name: "Captain Redwave",
+    variant: "pirate-captain",
+    category: "teacher",
+    background: "Treasure Deck",
+    sound: "ARRR!",
+    elements: ["rope borders", "treasure glints", "ocean swashes"],
+    palette: { hair: "#2f2a26", skin: "#efc39b", costume_primary: "#b45309", costume_accent: "#dc2626", eye: "#0f766e" },
+    ui: { accent: "#b45309", accent_2: "#0f766e", accent_3: "#facc15", surface: "#fff8ee", bg_start: "#ffe7c2", bg_end: "#e7fbf8", glow: "rgba(180, 83, 9, 0.22)" },
+  },
+  {
+    keys: ["technology", "tech", "robot", "ai"],
+    name: "Circuit Bot",
+    variant: "robot",
+    category: "subject_expert",
+    background: "Neon Lab Grid",
+    sound: "BEEP!",
+    elements: ["circuit trails", "hologram cards", "neon dots"],
+    palette: { hair: "#94a3b8", skin: "#dbeafe", costume_primary: "#0f766e", costume_accent: "#2563eb", eye: "#22d3ee" },
+    ui: { accent: "#0f766e", accent_2: "#2563eb", accent_3: "#8b5cf6", surface: "#f3fbff", bg_start: "#d1fae5", bg_end: "#e0e7ff", glow: "rgba(15, 118, 110, 0.22)" },
+  },
+  {
+    keys: ["fantasy", "wizard", "dragon", "magic", "quest"],
+    name: "Quest Mage",
+    variant: "fantasy-ranger",
+    category: "teacher",
+    background: "Enchanted Library",
+    sound: "SPARK!",
+    elements: ["magic runes", "castle arches", "dragon-glow highlights"],
+    palette: { hair: "#4b2e83", skin: "#efc39b", costume_primary: "#7d4dff", costume_accent: "#facc15", eye: "#2dd4bf" },
+    ui: { accent: "#7d4dff", accent_2: "#2dd4bf", accent_3: "#facc15", surface: "#f8f2ff", bg_start: "#f8f2ff", bg_end: "#ecfbf7", glow: "rgba(125, 77, 255, 0.18)" },
+  },
+  {
+    keys: ["cartoon", "toon", "animated"],
+    name: "Spark",
+    variant: "explorer",
+    category: "student",
+    background: "Sticker Clubhouse",
+    sound: "POP!",
+    elements: ["sticker bursts", "bouncy panels", "rainbow classroom props"],
+    palette: { hair: "#e63946", skin: "#efc39b", costume_primary: "#fb5607", costume_accent: "#ffb703", eye: "#2ec4b6" },
+    ui: { accent: "#fb5607", accent_2: "#ffb703", accent_3: "#2ec4b6", surface: "#fff8dd", bg_start: "#fff8dd", bg_end: "#edfff2", glow: "rgba(255, 183, 3, 0.22)" },
+  },
+  {
+    keys: ["horror", "scary", "haunted", "shadow", "mystery", "fog"],
+    name: "Nocturne",
+    variant: "mystic-hero",
+    category: "teacher",
+    background: "Moonlit Mystery Hall",
+    sound: "WHUM!",
+    elements: ["cinematic fog", "spotlight shadows", "mystery glows"],
+    palette: { hair: "#111827", skin: "#efc39b", costume_primary: "#7f1d1d", costume_accent: "#8b5cf6", eye: "#facc15" },
+    ui: { accent: "#7f1d1d", accent_2: "#8b5cf6", accent_3: "#facc15", surface: "#f8f2f2", bg_start: "#fee2e2", bg_end: "#ede9fe", glow: "rgba(127, 29, 29, 0.2)" },
+  },
+];
+
 const state = {
   currentComic: null,
   currentJobId: null,
@@ -117,6 +252,7 @@ function cacheEls() {
     "comic-image",
     "comic-title",
     "comic-caption",
+    "comic-page-strip",
     "preview-theme-stage",
     "preview-theme-image",
     "preview-theme-sound",
@@ -283,8 +419,65 @@ function currentTheme() {
   return state.themes.find((theme) => theme.slug === slug) || null;
 }
 
+function themeMatchText(theme = null) {
+  return `${theme?.slug || ""} ${theme?.title || ""}`.toLowerCase();
+}
+
+function fallbackThemeRender(theme = null) {
+  if (!theme) return DEFAULT_THEME_RENDER;
+  const matchText = themeMatchText(theme);
+  const fallback = THEME_CHARACTER_FALLBACKS.find((entry) =>
+    entry.keys.some((key) => matchText.includes(key))
+  );
+  if (!fallback) return DEFAULT_THEME_RENDER;
+
+  return {
+    ...DEFAULT_THEME_RENDER,
+    id: fallback.keys[0],
+    label: theme.title || fallback.name,
+    badge_text: theme.title || "Comic Preview",
+    headline: `${fallback.name} leads this ${theme.title || "theme"} comic setup.`,
+    sound_effect: fallback.sound,
+    ui: fallback.ui,
+    comic_elements: fallback.elements,
+    featured_cast: [
+      {
+        ...DEFAULT_THEME_RENDER.featured_cast[0],
+        name: fallback.name,
+        description: `${fallback.name} is the signature character for ${theme.title || "this theme"}.`,
+        variant: fallback.variant,
+        category: fallback.category,
+        palette: fallback.palette,
+      },
+    ],
+    featured_background: {
+      ...DEFAULT_THEME_RENDER.featured_background,
+      name: fallback.background,
+    },
+  };
+}
+
 function themeRenderFor(theme = null) {
-  return normalizeThemeRender(theme?.theme_render || theme?.meta?.theme_render || DEFAULT_THEME_RENDER);
+  const explicit = theme?.theme_render || theme?.meta?.theme_render || {};
+  const fallback = fallbackThemeRender(theme);
+  const hasExplicitCast = Array.isArray(explicit.featured_cast) && explicit.featured_cast.length;
+  return normalizeThemeRender({
+    ...fallback,
+    ...explicit,
+    ui: {
+      ...(fallback.ui || {}),
+      ...((explicit && explicit.ui) || {}),
+    },
+    featured_cast: hasExplicitCast ? explicit.featured_cast : fallback.featured_cast,
+    featured_background: {
+      ...(fallback.featured_background || {}),
+      ...((explicit && explicit.featured_background) || {}),
+    },
+    comic_elements:
+      Array.isArray(explicit.comic_elements) && explicit.comic_elements.length
+        ? explicit.comic_elements
+        : fallback.comic_elements,
+  });
 }
 
 function primaryThemeCharacter(theme = null) {
@@ -633,6 +826,9 @@ function showComicSkeleton() {
   if (els["comic-image"]) {
     els["comic-image"].style.display = "none";
   }
+  if (els["comic-page-strip"]) {
+    els["comic-page-strip"].hidden = true;
+  }
 }
 
 function hideComicSkeleton() {
@@ -642,6 +838,44 @@ function hideComicSkeleton() {
   if (els["comic-image"]) {
     els["comic-image"].style.display = "";
   }
+}
+
+function comicPageUrls(comic) {
+  const metaUrls = Array.isArray(comic?.meta?.page_image_urls) ? comic.meta.page_image_urls : [];
+  if (metaUrls.length) return metaUrls;
+  const count = Number(comic?.page_count || comic?.meta?.page_count || 1);
+  const comicId = comic?.comic_id;
+  if (!comicId || count <= 1) return [];
+  return Array.from({ length: count }, (_, index) => `/api/comics/${comicId}/pages/${index + 1}`);
+}
+
+function setComicPreviewImage(url, comicId) {
+  if (!els["comic-image"] || !url) return;
+  const cacheKey = `${comicId || Date.now()}-${url}`;
+  els["comic-image"].src = `${apiUrl(url)}?v=${encodeURIComponent(cacheKey)}`;
+}
+
+function renderComicPageStrip(comic) {
+  const strip = els["comic-page-strip"];
+  if (!strip) return;
+  const urls = comicPageUrls(comic);
+  strip.innerHTML = "";
+  strip.hidden = urls.length <= 1;
+  if (urls.length <= 1) return;
+
+  urls.forEach((url, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = index === 0 ? "page-chip is-active" : "page-chip";
+    button.textContent = String(index + 1);
+    button.setAttribute("aria-label", `Show comic sheet ${index + 1}`);
+    button.addEventListener("click", () => {
+      strip.querySelectorAll(".page-chip").forEach((chip) => chip.classList.remove("is-active"));
+      button.classList.add("is-active");
+      setComicPreviewImage(url, comic.comic_id);
+    });
+    strip.appendChild(button);
+  });
 }
 
 function renderComic(comic) {
@@ -695,13 +929,17 @@ function renderComic(comic) {
     },
     { once: true }
   );
-  newImg.src = `${apiUrl(comic.image_url)}?v=${encodeURIComponent(comic.comic_id)}`;
+  const firstPageUrl = comicPageUrls(comic)[0] || comic.image_url;
+  renderComicPageStrip(comic);
+  setComicPreviewImage(firstPageUrl, comic.comic_id);
 
   els["comic-title"].textContent = comic.title;
   const themeLabel = comic.meta?.theme_title
     ? `${comic.meta.theme_title} • ${comic.meta?.theme_profile_label || comic.subject}`
     : comic.meta?.theme_profile_label || comic.subject;
-  els["comic-caption"].textContent = `${themeLabel} • ${comic.panel_count} panels • PDF ready for download`;
+  const pageCount = Number(comic.page_count || comic.meta?.page_count || 1);
+  const pageLabel = pageCount === 1 ? "1 page" : `${pageCount} pages`;
+  els["comic-caption"].textContent = `${themeLabel} • ${pageLabel} • ${comic.panel_count} panels • PDF ready for download`;
   els["download-pdf"].disabled = false;
 }
 
@@ -710,6 +948,10 @@ function resetOutput() {
   hideComicSkeleton();
   els["comic-preview"].classList.add("empty");
   els["comic-image"].removeAttribute("src");
+  if (els["comic-page-strip"]) {
+    els["comic-page-strip"].innerHTML = "";
+    els["comic-page-strip"].hidden = true;
+  }
   renderPlaceholderPreview(currentTheme(), { compact: true });
   const theme = currentTheme();
   const primary = primaryThemeCharacter(theme);

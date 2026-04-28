@@ -7,7 +7,7 @@
   <meta name="description" content="Cominote turns study notes into simple comic-style learning strips.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Bebas+Neue&family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Bebas+Neue&family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,13 +25,15 @@
       --ink: #1A1A1A;
       --sh: 5px 5px 0 #1A1A1A;
       --sh-lg: 8px 8px 0 #1A1A1A;
+      --soft-shadow: 0 18px 38px rgba(26, 26, 26, 0.14);
+      --comic-radius: 8px;
     }
 
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: 'Comic Neue', cursive;
-      background: var(--g);
+      font-family: 'Nunito', 'Comic Neue', cursive;
+      background: linear-gradient(180deg, #FFF4A3 0%, var(--g) 36%, #FFFBEF 100%);
       color: var(--b);
       overflow-x: hidden;
       cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='8' fill='%23FFE03D' stroke='%231A1A1A' stroke-width='2'/%3E%3C/svg%3E") 10 10, auto;
@@ -108,15 +110,16 @@
       border: 3px solid var(--b);
       font-weight: 700;
       box-shadow: var(--sh);
-      transition: transform 0.12s, box-shadow 0.12s;
+      transition: transform 0.12s, box-shadow 0.12s, filter 0.12s;
       font-family: 'Bangers', cursive;
       letter-spacing: 1.5px;
       font-size: 1.1rem;
       padding: 9px 26px;
+      border-radius: 8px;
     }
-    .btn-primary { background: var(--o); color: var(--w); }
-    .btn-outline { background: var(--w); color: var(--b); }
-    .btn-primary:hover, .btn-outline:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--b); }
+    .btn-primary { background: linear-gradient(180deg, #ff813f, var(--o)); color: var(--w); }
+    .btn-outline { background: linear-gradient(180deg, #ffffff, #fff8dd); color: var(--b); }
+    .btn-primary:hover, .btn-outline:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--b); filter: saturate(1.08); }
     .btn-primary:disabled, .btn-outline:disabled { opacity: 0.5; pointer-events: none; }
     .small-btn { padding: 7px 18px; font-size: 0.95rem; }
 
@@ -238,15 +241,17 @@
       padding: 40px 48px 40px 20px;
       display: flex;
       justify-content: flex-end;
+      min-width: 0;
     }
 
     .comic-panels-hero {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      grid-template-rows: auto auto;
+      grid-template-rows: minmax(0, 1.18fr) minmax(0, 1fr);
       gap: 0;
       width: 100%;
       max-width: 480px;
+      aspect-ratio: 1 / 0.9;
       border: 5px solid var(--b);
       box-shadow: var(--sh-lg);
       background: var(--w);
@@ -257,13 +262,13 @@
       border: 3px solid var(--b);
       overflow: hidden;
       position: relative;
-      min-height: 200px;
+      min-height: 0;
       display: flex;
       align-items: flex-end;
       justify-content: flex-start;
       padding: 0;
     }
-    .cpanel:nth-child(1) { background: #FFF3AA; grid-column: 1 / 3; min-height: 240px; }
+    .cpanel:nth-child(1) { background: #FFF3AA; grid-column: 1 / 3; }
     .cpanel:nth-child(2) { background: #D4F0FF; }
     .cpanel:nth-child(3) { background: #FFD6F0; }
 
@@ -338,6 +343,64 @@
       letter-spacing: 2px;
     }
 
+    .cpanel-top {
+      grid-column: 1 / 3;
+    }
+    .cpanel-top .cpanel-bubble {
+      top: 52px;
+      left: 16px;
+    }
+    .cpanel-top-character {
+      position: absolute;
+      bottom: 0;
+      right: 16px;
+      width: min(39%, 185px);
+      height: auto;
+      max-height: 92%;
+    }
+    .cpanel-top-effect {
+      bottom: 18px;
+      left: 34%;
+      width: 18%;
+      text-align: center;
+      color: #F4621E;
+      font-size: clamp(1.35rem, 3.7vw, 2.05rem);
+      white-space: nowrap;
+    }
+    .cpanel-pow .sfx-text {
+      top: 50%;
+      left: 50%;
+      width: 80%;
+      text-align: center;
+      transform: translate(-50%, -50%);
+      color: #E8253A;
+      font-size: clamp(2rem, 6vw, 3.15rem);
+      white-space: nowrap;
+      z-index: 4;
+      animation: powCenterBounce 0.8s ease-in-out infinite alternate;
+    }
+    .cpanel-pow-burst {
+      position: absolute;
+      inset: 12%;
+      width: 76%;
+      height: 76%;
+    }
+    .cpanel-win .cpanel-bubble {
+      top: 16px;
+      left: 12px;
+      right: 72px;
+      max-width: none;
+      font-size: 0.84rem;
+    }
+    .cpanel-win-character {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: min(48%, 130px);
+      height: auto;
+      max-height: 88%;
+    }
+
     /* ─── HOW IT WORKS ─── */
     .how-section {
       padding: 80px 60px;
@@ -392,12 +455,15 @@
 
     .steps-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
       max-width: 1000px;
       margin: 0 auto;
+      padding: 16px;
       border: 4px solid var(--b);
       box-shadow: var(--sh-lg);
+      background: var(--w);
+      align-items: stretch;
     }
 
     .step-card {
@@ -405,6 +471,11 @@
       border: 3px solid var(--b);
       text-align: center;
       position: relative;
+      min-width: 0;
+      min-height: 252px;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      align-items: start;
       transition: transform 0.15s, box-shadow 0.15s;
       cursor: default;
     }
@@ -446,11 +517,12 @@
       font-weight: 500;
       line-height: 1.55;
       color: #333;
+      overflow-wrap: anywhere;
     }
 
     .step-connector {
       position: absolute;
-      right: -20px;
+      right: -29px;
       top: 50%;
       transform: translateY(-50%);
       z-index: 10;
@@ -656,7 +728,7 @@
     .auth-message.is-error { color: #721c24; }
 
     /* ─── DASHBOARD ─── */
-    .dash-wrap { min-height: 100vh; background: var(--g); }
+    .dash-wrap { min-height: 100vh; background: linear-gradient(180deg, #fff4aa 0%, var(--g) 24%, #fffaf0 100%); }
     .dash-nav {
       display: flex; justify-content: space-between; align-items: center;
       padding: 14px 40px; background: var(--y); border-bottom: 4px solid var(--b);
@@ -676,33 +748,34 @@
     .dash-header { margin-bottom: 28px; }
     .dash-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 24px; align-items: start; }
     .dash-side { display: grid; gap: 24px; }
-    .dash-card { border: 4px solid var(--b); background: var(--w); box-shadow: var(--sh-lg); padding: 26px 24px; }
+    .dash-card { border: 4px solid var(--b); background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,251,239,0.96)); box-shadow: var(--sh-lg), var(--soft-shadow); padding: 26px 24px; border-radius: var(--comic-radius); }
     .dash-card h3 { font-family: 'Bangers', cursive; font-size: 1.7rem; margin-bottom: 16px; color: var(--b); letter-spacing: 1px; }
     .field { margin-bottom: 18px; }
     .field-label { display: block; font-weight: 700; font-size: 0.82rem; margin-bottom: 5px; color: var(--b); text-transform: uppercase; letter-spacing: 0.5px; font-family: 'Fredoka', sans-serif; }
     .field input, .field select, .field textarea {
       width: 100%; padding: 11px 14px; border: 3px solid var(--b);
-      font-family: 'Comic Neue', cursive; font-size: 1rem; font-weight: 700;
-      background: var(--w); outline: none;
+      font-family: 'Nunito', 'Comic Neue', cursive; font-size: 1rem; font-weight: 800;
+      background: linear-gradient(180deg, #ffffff, #fffdf4); outline: none;
+      border-radius: 8px;
     }
     .field textarea { min-height: 200px; resize: vertical; }
     .field input:focus, .field select:focus, .field textarea:focus { box-shadow: 4px 4px 0 var(--b); }
     .field-hint, .inline-feedback { font-size: 0.9rem; display: block; font-weight: 700; font-family: 'Fredoka', sans-serif; }
     .field-group { margin-bottom: 18px; }
-    .primary-card { background: #FFFBEF; }
+    .primary-card { background: linear-gradient(180deg, #FFFBEF, #fff6c8); }
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 3px solid var(--b); }
     .card-header h3 { margin-bottom: 0; }
     .card-badge { font-size: 0.75rem; background: var(--y); color: var(--b); padding: 5px 12px; border: 2px solid var(--b); font-weight: 700; font-family: 'Fredoka', sans-serif; }
     .theme-browser { margin-bottom: 18px; }
-    .theme-selector { width: 100%; padding: 11px 14px; border: 3px solid var(--b); font-family: 'Comic Neue', cursive; font-size: 1rem; font-weight: 700; background: var(--w); outline: none; cursor: pointer; }
+    .theme-selector { width: 100%; padding: 11px 14px; border: 3px solid var(--b); font-family: 'Nunito', 'Comic Neue', cursive; font-size: 1rem; font-weight: 800; background: linear-gradient(180deg, #ffffff, #fffdf4); outline: none; cursor: pointer; border-radius: 8px; }
     .theme-selector:focus { box-shadow: 4px 4px 0 var(--b); }
-    .theme-summary { border: 3px solid var(--b); background: var(--w); padding: 16px; box-shadow: 4px 4px 0 var(--b); display: grid; gap: 10px; margin-top: 10px; }
+    .theme-summary { border: 3px solid var(--b); background: linear-gradient(160deg, rgba(255,255,255,0.96), var(--theme-surface, #fffaf0)); padding: 16px; box-shadow: 4px 4px 0 var(--b), 0 14px 26px var(--theme-glow, rgba(244,99,30,0.18)); display: grid; gap: 10px; margin-top: 10px; border-radius: 8px; }
     .theme-summary.empty { background: var(--g); }
     .theme-summary-header strong { display: block; font-family: 'Bangers', cursive; font-size: 1.4rem; letter-spacing: 1px; }
     .theme-pills { display: flex; flex-wrap: wrap; gap: 8px; }
-    .theme-pill { display: inline-flex; align-items: center; min-height: 34px; padding: 6px 10px; border: 2px solid var(--b); background: var(--g); font-weight: 700; font-size: 0.82rem; font-family: 'Fredoka', sans-serif; }
+    .theme-pill { display: inline-flex; align-items: center; min-height: 34px; padding: 6px 10px; border: 2px solid var(--b); background: linear-gradient(180deg, #ffffff, var(--g)); font-weight: 800; font-size: 0.82rem; font-family: 'Fredoka', sans-serif; border-radius: 8px; }
     .theme-summary-hero { display: grid; grid-template-columns: 200px 1fr; gap: 16px; }
-    .theme-character-stage, .preview-theme-stage { position: relative; overflow: hidden; border: 3px solid var(--b); background: linear-gradient(145deg, var(--theme-bg-start, #fff2b2), var(--theme-bg-end, #fef8df)); min-height: 220px; }
+    .theme-character-stage, .preview-theme-stage { position: relative; overflow: hidden; border: 3px solid var(--b); background: linear-gradient(145deg, var(--theme-bg-start, #fff2b2), var(--theme-bg-end, #fef8df)); min-height: 220px; border-radius: 8px; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.45), 0 14px 28px var(--theme-glow, rgba(244,99,30,0.16)); }
     .theme-character-image, .preview-theme-image { display: block; width: 100%; height: auto; }
     .theme-stage-badge { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.92); border: 2px solid var(--b); font-weight: 800; font-size: 0.78rem; padding: 4px 10px; z-index: 2; font-family: 'Fredoka', sans-serif; }
     .theme-stage-sfx { position: absolute; top: 10px; right: 10px; font-family: 'Bangers', cursive; font-size: 1.6rem; color: #fff; -webkit-text-stroke: 1px var(--b); text-shadow: 2px 2px 0 var(--b); z-index: 2; }
@@ -711,7 +784,7 @@
     .theme-character-copy strong { font-family: 'Bangers', cursive; font-size: 1.6rem; letter-spacing: 1px; }
     .theme-character-copy p { font-family: 'Fredoka', sans-serif; font-size: 0.9rem; font-weight: 600; color: #555; line-height: 1.5; }
     .theme-feature-strip { display: flex; flex-wrap: wrap; gap: 8px; }
-    .upload-card { display: block; border: 3px dashed var(--b); background: var(--y); padding: 16px; margin-bottom: 8px; transition: transform 0.15s, box-shadow 0.15s; cursor: pointer; }
+    .upload-card { display: block; border: 3px dashed var(--b); background: linear-gradient(135deg, var(--y), #fff4a3); padding: 16px; margin-bottom: 8px; transition: transform 0.15s, box-shadow 0.15s, background 0.15s; cursor: pointer; border-radius: 8px; box-shadow: 4px 4px 0 var(--b), 0 12px 26px rgba(244, 99, 30, 0.14); }
     .upload-card input { display: none; }
     .upload-card.is-dragging { background: #D4F7E0; transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--b); }
     .upload-card.has-file { background: #D4F7E0; border-style: solid; }
@@ -722,15 +795,15 @@
     .composer-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
     .large-btn { font-size: 1.2rem; padding: 14px 24px; flex: 1; }
     .btn-secondary {
-      background: var(--g); border: 3px solid var(--b); color: var(--b);
+      background: linear-gradient(180deg, #ffffff, var(--g)); border: 3px solid var(--b); color: var(--b);
       padding: 12px 20px; font-weight: 700; font-family: 'Fredoka', sans-serif;
-      box-shadow: var(--sh); transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: var(--sh); transition: transform 0.15s, box-shadow 0.15s; border-radius: 8px;
     }
     .btn-secondary:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 var(--b); }
-    .status-meter { height: 18px; border: 3px solid var(--b); background: var(--w); overflow: hidden; }
+    .status-meter { height: 18px; border: 3px solid var(--b); background: var(--w); overflow: hidden; border-radius: 999px; }
     .status-progress { width: 0; height: 100%; background: linear-gradient(90deg, var(--o), var(--r), var(--blue)); transition: width 0.28s ease; }
     .status-steps { display: grid; gap: 12px; margin: 16px 0; }
-    .status-step { border: 2px solid var(--b); background: #f2f2f2; padding: 12px; display: grid; gap: 4px; }
+    .status-step { border: 2px solid var(--b); background: linear-gradient(180deg, #ffffff, #f2f2f2); padding: 12px; display: grid; gap: 4px; border-radius: 8px; }
     .status-step strong { display: block; font-family: 'Bangers', cursive; letter-spacing: 1px; font-size: 1.1rem; }
     .status-step span { font-weight: 700; font-size: 0.88rem; font-family: 'Fredoka', sans-serif; }
     .status-step.is-active { background: #FFF6AA; border-color: var(--o); }
@@ -739,13 +812,13 @@
     .status-note strong { display: block; font-family: 'Bangers', cursive; font-size: 1.3rem; margin-bottom: 6px; letter-spacing: 1px; }
     .status-note p { font-family: 'Fredoka', sans-serif; font-weight: 600; }
     .summary-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
-    .summary-board article { border: 2px solid var(--b); background: var(--w); padding: 12px; }
+    .summary-board article { border: 2px solid var(--b); background: linear-gradient(180deg, #ffffff, #fff8dd); padding: 12px; border-radius: 8px; box-shadow: 3px 3px 0 var(--b); }
     .summary-board span { font-weight: 700; font-family: 'Fredoka', sans-serif; font-size: 0.85rem; }
     .summary-board strong { font-family: 'Bangers', cursive; font-size: 1.45rem; margin-top: 4px; display: block; letter-spacing: 1px; }
-    .comic-preview { min-height: 340px; border: 4px solid var(--b); background: linear-gradient(180deg, #ffe76b, #ffd93d); display: grid; place-items: center; overflow: hidden; margin-bottom: 16px; padding: 12px; position: relative; }
+    .comic-preview { min-height: 420px; border: 4px solid var(--b); background: linear-gradient(150deg, #fff4a3 0%, #ffe76b 48%, #ffd93d 100%); display: grid; place-items: center; overflow: hidden; margin-bottom: 14px; padding: 14px; position: relative; border-radius: 8px; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.45), 0 18px 36px rgba(26,26,26,0.16); }
     .comic-preview.empty img { display: none; }
     .comic-preview:not(.empty) .preview-placeholder { display: none; }
-    .comic-preview img { display: block; width: 100%; max-height: min(86vh, 980px); height: auto; object-fit: contain; }
+    .comic-preview img { display: block; width: 100%; max-height: min(86vh, 1040px); height: auto; object-fit: contain; border-radius: 6px; filter: drop-shadow(0 12px 18px rgba(26,26,26,0.22)); }
     .preview-placeholder { text-align: center; padding: 24px; display: grid; place-items: center; gap: 10px; width: 100%; }
     .preview-placeholder strong { font-family: 'Bangers', cursive; font-size: 1.5rem; letter-spacing: 1px; }
     .preview-placeholder p { font-family: 'Fredoka', sans-serif; font-weight: 600; color: #555; }
@@ -758,7 +831,7 @@
     .output-actions { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
     .history-card { }
     .history-list { display: grid; gap: 12px; }
-    .history-entry { border: 2px solid var(--b); background: var(--g); padding: 14px; }
+    .history-entry { border: 2px solid var(--b); background: linear-gradient(180deg, #ffffff, var(--g)); padding: 14px; border-radius: 8px; box-shadow: 3px 3px 0 var(--b); }
     .history-entry strong { font-family: 'Bangers', cursive; font-size: 1.2rem; display: block; letter-spacing: 1px; }
     .history-entry p, .history-entry small { font-weight: 700; font-family: 'Fredoka', sans-serif; }
     .history-entry button { margin-top: 10px; }
@@ -766,6 +839,23 @@
     .empty-state p { font-weight: 700; font-family: 'Fredoka', sans-serif; }
     .loading-skeleton { background: linear-gradient(90deg, #f0e8c0 25%, #ffe9a0 50%, #f0e8c0 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
     .comic-preview.loading-skeleton img { display: none; }
+    .comic-page-strip { display: flex; gap: 8px; flex-wrap: wrap; margin: -2px 0 14px; align-items: center; }
+    .comic-page-strip[hidden] { display: none; }
+    .page-chip {
+      min-width: 34px;
+      min-height: 34px;
+      display: inline-grid;
+      place-items: center;
+      border: 2px solid var(--b);
+      background: #fff;
+      color: var(--b);
+      font-family: 'Fredoka', sans-serif;
+      font-weight: 800;
+      border-radius: 8px;
+      box-shadow: 3px 3px 0 var(--b);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+    .page-chip:hover, .page-chip.is-active { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--b); background: var(--y); }
     :root {
       --theme-display-font: "Bangers", cursive;
       --theme-body-font: "Comic Neue", cursive;
@@ -783,6 +873,7 @@
     body[data-theme-profile="cartoon_kids"] { --theme-accent: #fb5607; --theme-accent-2: #ffb703; --theme-accent-3: #2ec4b6; --theme-surface: #fff8dd; --theme-bg-start: #fff8dd; --theme-bg-end: #edfff2; --theme-glow: rgba(255,183,3,0.2); }
     body[data-theme-profile="manga"] { --theme-accent: #232323; --theme-accent-2: #575757; --theme-accent-3: #a0a0a0; --theme-surface: #f2f2f2; --theme-bg-start: #fafafa; --theme-bg-end: #dcdcdc; --theme-glow: rgba(35,35,35,0.1); }
     body[data-theme-profile="fantasy"] { --theme-accent: #7d4dff; --theme-accent-2: #2dd4bf; --theme-accent-3: #facc15; --theme-surface: #f8f2ff; --theme-bg-start: #f8f2ff; --theme-bg-end: #ecfbf7; --theme-glow: rgba(125,77,255,0.16); }
+    body[data-theme-profile="horror"] { --theme-accent: #7f1d1d; --theme-accent-2: #8b5cf6; --theme-accent-3: #facc15; --theme-surface: #f8f2f2; --theme-bg-start: #fee2e2; --theme-bg-end: #ede9fe; --theme-glow: rgba(127,29,29,0.18); }
 
     /* ─── ANIMATIONS ─── */
     @keyframes badgePop {
@@ -800,6 +891,10 @@
     @keyframes sfxBounce {
       from { transform: scale(1) rotate(-4deg); }
       to { transform: scale(1.1) rotate(4deg); }
+    }
+    @keyframes powCenterBounce {
+      from { transform: translate(-50%, -50%) scale(1) rotate(-3deg); }
+      to { transform: translate(-50%, -50%) scale(1.08) rotate(3deg); }
     }
     @keyframes shimmer {
       0% { background-position: -200% center; }
@@ -824,8 +919,10 @@
       .hero-center-band { display: none; }
       .hero-left { padding: 40px 32px; }
       .hero-right { padding: 20px 32px 40px; justify-content: center; }
+      .comic-panels-hero { max-width: 560px; }
       .chars-grid { grid-template-columns: repeat(3, 1fr); }
       .steps-grid { grid-template-columns: 1fr 1fr; }
+      .step-connector { display: none; }
       .dash-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 768px) {
@@ -833,11 +930,20 @@
       .hero h1 { font-size: 3rem; }
       .how-section, .characters-section, .cta-section { padding: 50px 24px; }
       .steps-grid { grid-template-columns: 1fr; }
+      .step-card { min-height: auto; }
+      .comic-panels-hero { max-width: 420px; }
+      .cpanel-label { font-size: 0.92rem; }
+      .cpanel-bubble { font-size: 0.72rem; max-width: 130px; }
+      .cpanel-top-character { right: 8px; width: min(37%, 145px); }
+      .cpanel-top-effect { left: 32%; font-size: clamp(1.05rem, 5vw, 1.55rem); }
+      .cpanel-win .cpanel-bubble { right: 52px; font-size: 0.72rem; }
       .chars-grid { grid-template-columns: repeat(2, 1fr); }
       .cta-section { flex-direction: column; text-align: center; }
       .dash-body { padding: 24px 16px; }
       .summary-board { grid-template-columns: 1fr; }
       .theme-summary-hero { grid-template-columns: 1fr; }
+      .comic-preview { min-height: 300px; padding: 10px; }
+      .comic-page-strip { justify-content: center; }
     }
   </style>
 </head>
@@ -886,14 +992,14 @@
     <div class="hero-right">
       <div class="comic-panels-hero">
         <!-- Panel 1: Wide top -->
-        <div class="cpanel" style="grid-column:1/3; background:#FFF3AA; min-height:230px;">
+        <div class="cpanel cpanel-top" style="background:#FFF3AA;">
           <div class="cpanel-dots"></div>
           <span class="cpanel-label">PANEL 01</span>
-          <div class="cpanel-bubble" style="top:52px; left:16px;">
+          <div class="cpanel-bubble">
             Student pastes boring notes into Cominote...
           </div>
           <!-- Anime student character -->
-          <svg viewBox="0 0 300 220" xmlns="http://www.w3.org/2000/svg" style="position:absolute; bottom:0; right:20px; width:200px; height:220px;">
+          <svg class="cpanel-top-character" viewBox="0 0 300 220" xmlns="http://www.w3.org/2000/svg">
             <!-- Shadow -->
             <ellipse cx="150" cy="210" rx="55" ry="10" fill="#00000022"/>
             <!-- Legs -->
@@ -938,16 +1044,16 @@
             <ellipse cx="116" cy="92" rx="9" ry="5" fill="#FF8FAB" opacity="0.5"/>
             <ellipse cx="172" cy="92" rx="9" ry="5" fill="#FF8FAB" opacity="0.5"/>
           </svg>
-          <span class="sfx-text" style="bottom:20px; left:40%; color:#F4621E;">📄→?</span>
+          <span class="sfx-text cpanel-top-effect">📄→?</span>
         </div>
 
         <!-- Panel 2 -->
-        <div class="cpanel" style="background:#FFD6F0; min-height:200px;">
+        <div class="cpanel cpanel-pow" style="background:#FFD6F0;">
           <div class="cpanel-dots"></div>
           <span class="cpanel-label">PANEL 02</span>
-          <span class="sfx-text" style="top:50%; left:50%; transform:translate(-50%,-50%); color:#E8253A; font-size:4rem;">POW!</span>
+          <span class="sfx-text">POW!</span>
           <!-- Star burst -->
-          <svg viewBox="0 0 200 200" style="position:absolute; inset:0; width:100%; height:100%;" xmlns="http://www.w3.org/2000/svg">
+          <svg class="cpanel-pow-burst" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
             <g transform="translate(100,100)">
               <path d="M0,-80 L14,-30 L60,-60 L30,-14 L80,0 L30,14 L60,60 L14,30 L0,80 L-14,30 L-60,60 L-30,14 L-80,0 L-30,-14 L-60,-60 L-14,-30 Z" fill="#FFE03D" stroke="#1a1a1a" stroke-width="4" opacity="0.7"/>
             </g>
@@ -955,14 +1061,14 @@
         </div>
 
         <!-- Panel 3 -->
-        <div class="cpanel" style="background:#D4F0FF; min-height:200px;">
+        <div class="cpanel cpanel-win" style="background:#D4F0FF;">
           <div class="cpanel-dots"></div>
           <span class="cpanel-label">PANEL 03</span>
-          <div class="cpanel-bubble" style="top:14px; left:10px; font-size:0.9rem;">
+          <div class="cpanel-bubble">
             I actually UNDERSTAND this now! 🎉
           </div>
           <!-- Celebrating character -->
-          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="position:absolute; bottom:0; right:0; width:130px; height:190px;">
+          <svg class="cpanel-win-character" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
             <ellipse cx="100" cy="196" rx="40" ry="7" fill="#00000022"/>
             <rect x="82" y="148" width="16" height="50" rx="7" fill="#FB5607" stroke="#1a1a1a" stroke-width="2"/>
             <rect x="102" y="148" width="16" height="50" rx="7" fill="#FB5607" stroke="#1a1a1a" stroke-width="2"/>
@@ -1443,6 +1549,7 @@
               </div>
               <img id="comic-image" alt="Generated Cominote comic preview">
             </div>
+            <div id="comic-page-strip" class="comic-page-strip" hidden></div>
             <div class="output-meta">
               <strong id="comic-title">Waiting for your first comic</strong>
               <p id="comic-caption">Your finished comic preview and PDF download will show up here.</p>
@@ -1464,7 +1571,7 @@
   </div>
 </div>
 
-<script src="/config.js?v=20260421-theme-render-fix"></script>
-<script type="module" src="/app.js?v=20260421-theme-render-fix"></script>
+<script src="/config.js?v=20260428-premium-comic-upgrade"></script>
+<script type="module" src="/app.js?v=20260428-premium-comic-upgrade"></script>
 </body>
 </html>

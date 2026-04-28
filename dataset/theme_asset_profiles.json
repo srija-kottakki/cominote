@@ -119,6 +119,26 @@
       "layout_label": "Cinematic fantasy frames",
       "accent": "#7d4dff",
       "surface": "#f8f2ff"
+    },
+    {
+      "slug": "horror",
+      "label": "Horror Theme",
+      "description": "Cinematic shadows, foggy mystery spaces, dramatic expressions, and suspenseful teaching beats.",
+      "dataset_style": "manga_story",
+      "palette_style": "manga",
+      "layout_style": "cinematic_grid",
+      "preferred_bubble": "manga_box",
+      "title_font_family": "display",
+      "body_font_family": "sans",
+      "effect_font_family": "display",
+      "ui_display_font": "\"Bebas Neue\", \"Bangers\", sans-serif",
+      "ui_body_font": "\"Nunito\", \"Comic Neue\", sans-serif",
+      "font_label": "Bebas + Nunito",
+      "character_summary": "mystery students, shadow mentors, focused cinematic faces",
+      "background_summary": "moonlit halls, fog, shadow frames, spotlight beams",
+      "layout_label": "Cinematic mystery frames",
+      "accent": "#7f1d1d",
+      "surface": "#f8f2f2"
     }
   ],
   "keyword_rules": [
@@ -143,6 +163,10 @@
       "keywords": ["fantasy", "wizard", "magic", "magical", "wonderland", "dragon", "knight", "ring", "lord of the rings", "journey to the west"]
     },
     {
+      "profile": "horror",
+      "keywords": ["horror", "scary", "mystery", "shadow", "fog", "haunted", "thriller", "upside down", "stranger things"]
+    },
+    {
       "profile": "cartoon_kids",
       "keywords": ["cartoon", "kids", "children", "storybook", "animal", "grandma", "jungle", "alice", "wimpy", "jataka", "stilton"]
     }
@@ -154,6 +178,7 @@
     "cute_cartoon": "cartoon_kids",
     "educational_kids": "cartoon_kids",
     "manga_story": "manga",
-    "fantasy_adventure": "fantasy"
+    "fantasy_adventure": "fantasy",
+    "horror": "horror"
   }
 }

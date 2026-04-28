@@ -53,6 +53,88 @@ except ImportError:
 MAX_TEXT_CHARS = 25_000_000
 CHUNK_SIZE = 5_000
 MAX_FILE_SIZE = 50 * 1024 * 1024
+PANELS_PER_COMIC_PAGE = 4
+PANEL_PAGE_PATTERN = (3, 4, 3, 4, 4, 3, 4)
+MIN_RENDER_PANEL_HEIGHT = 300
+MAX_ANALYSIS_SENTENCES = 800
+MAX_GENERATED_SCENES = 96
+EDUCATIONAL_FLOW_LABELS = (
+    "Concept Intro",
+    "Why It Matters",
+    "Real Example",
+    "Quick Tip",
+    "Connect Ideas",
+    "Remember This",
+    "Check Yourself",
+    "Final Idea",
+)
+PANEL_MODE_SEQUENCE = (
+    "question",
+    "concept",
+    "analogy",
+    "why",
+    "tip",
+    "connect",
+    "recap",
+    "concept",
+)
+
+TECH_TERM_TEACHING = {
+    "user interface design": "planning the screens, buttons, messages, and flows users interact with",
+    "interface design": "planning how users move through screens, buttons, messages, and actions",
+    "software testing": "checking software with planned examples to catch mistakes early",
+    "software design": "the blueprint you make before coding, so screens, data, and logic fit together",
+    "architecture": "the big structure of a system, like rooms and hallways in a building",
+    "model": "a simple version of the real thing that helps you understand it faster",
+    "requirement": "a clear need the software must satisfy for its users",
+    "requirements": "the needs the software must satisfy for its users",
+    "furps": "a software quality checklist: functionality, usability, reliability, performance, and supportability",
+    "functionality": "what the system can actually do for the user",
+    "usability": "how easy and comfortable the system feels to use",
+    "reliability": "how often the system works correctly without failing",
+    "performance": "how fast and smoothly the system responds",
+    "supportability": "how easy the system is to fix, update, and maintain",
+    "maintainability": "how easy the software is to improve later without breaking things",
+    "algorithm": "a step-by-step recipe for solving a problem",
+    "database": "an organized place where an app stores and finds information",
+    "api": "a doorway that lets two pieces of software talk to each other",
+    "interface": "the meeting point where people or systems interact",
+    "module": "a smaller piece of a system that handles one responsibility",
+    "modularity": "splitting a system into smaller parts so each part is easier to understand and test",
+    "coupling": "how strongly one part of a program depends on another part",
+    "cohesion": "how well one module stays focused on one clear job",
+    "class": "a reusable template for creating related objects in code",
+    "object": "a bundle of data and behavior that represents one thing in a program",
+    "testing": "checking software with planned examples to catch mistakes early",
+    "review": "a careful check of design or code before it reaches users",
+    "defect": "a mistake in software that should be found and fixed",
+    "abstraction": "hiding extra detail so you can focus on the main idea",
+    "encapsulation": "keeping data and behavior together so a part of the program is easier to protect",
+    "inheritance": "letting one class reuse features from another class",
+    "polymorphism": "letting different objects respond to the same action in their own way",
+}
+
+JARGON_REPLACEMENTS = (
+    (r"\butili[sz]e\b", "use"),
+    (r"\bfacilitate\b", "help"),
+    (r"\bprior to\b", "before"),
+    (r"\bcommence\b", "start"),
+    (r"\bcomprises?\b", "includes"),
+    (r"\bsubsequently\b", "then"),
+    (r"\btherefore\b", "so"),
+    (r"\bconsequently\b", "as a result"),
+    (r"\bapproximately\b", "about"),
+    (r"\bobtain\b", "get"),
+    (r"\bdemonstrates?\b", "shows"),
+    (r"\brepresents?\b", "shows"),
+    (r"\bensures?\b", "helps make sure"),
+    (r"\bmaintainability\b", "how easy it is to update later"),
+    (r"\breliability\b", "how often it works without failing"),
+    (r"\busability\b", "how easy it is to use"),
+    (r"\bperformance\b", "how fast and smooth it is"),
+    (r"\bfunctionality\b", "what it can do"),
+    (r"\bsupportability\b", "how easy it is to fix and support"),
+)
 
 ALLOWED_EXTENSIONS = {".txt", ".pdf", ".docx"}
 FALLBACK_STOPWORDS = {
@@ -474,6 +556,14 @@ class Scene:
     focus: str
 
 
+@dataclass
+class SourceSection:
+    label: str
+    text: str
+    source: str
+    index: int
+
+
 def _split_text_smart(text: str, chunk_size: int = CHUNK_SIZE) -> list[str]:
     paragraphs = re.split(r"\n{2,}", text)
     chunks, current = [], ""
@@ -547,7 +637,7 @@ class CominoteEngine:
         cast_mode = cast_mode if cast_mode in {"auto", "cominote", "archive", "mixed"} else "auto"
 
         self._notify(progress_callback, "collecting", 10, "Collecting your notes and uploaded file.")
-        cleaned_text, source_label, theme_meta = self._collect_input(
+        cleaned_text, source_label, theme_meta, source_sections = self._collect_input(
             text=text,
             uploaded_file=uploaded_file,
             theme_slug=theme_slug,
@@ -572,24 +662,35 @@ class CominoteEngine:
         if len(sentences) < 2:
             raise ValidationError("Please provide at least two meaningful sentences so the comic can tell a story.")
 
-        concepts = self._concepts(cleaned_text, sentences, subject)
-        relations = self._relations(sentences)
-
-        self._notify(progress_callback, "rendering", 82, "Rendering the comic panels and final image.")
-        scenes = self._scenes(
+        scenes = self._scenes_from_sections(
             title=title,
             subject=subject,
             concepts=concepts,
             relations=relations,
             sentences=sentences,
+            sections=source_sections,
             theme_title=(theme_meta or {}).get("title", ""),
+        )
+        page_plan = self._paginate_story_indices(len(scenes))
+        page_count = len(page_plan)
+
+        self._notify(
+            progress_callback,
+            "rendering",
+            82,
+            f"Rendering {page_count} comic page(s) from {len(scenes)} ordered story panel(s).",
+            {
+                "chunk_count": len(chunks),
+                "panel_count": len(scenes),
+                "page_count": page_count,
+            },
         )
 
         comic_id = uuid.uuid4().hex[:12]
         image_path = self.output_dir / f"{comic_id}.png"
         visual_plan = self._build_visual_plan(title, subject, style, scenes, cast_mode, theme_meta=theme_meta)
         dataset_style = visual_plan["dataset_style"]
-        self._render(
+        page_paths = self._render(
             image_path=image_path,
             title=title,
             subject=subject,
@@ -597,6 +698,7 @@ class CominoteEngine:
             scenes=scenes,
             visual_plan=visual_plan,
         )
+        page_count = len(page_paths) or page_count
 
         payload = {
             "comic_id": comic_id,
@@ -605,8 +707,9 @@ class CominoteEngine:
             "style": self._style_display_name(dataset_style),
             "source_label": source_label,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "summary": f"{title} was transformed into a {len(scenes)}-panel comic focused on {concepts[0].label if concepts else 'the main lesson'}.",
+            "summary": f"{title} was transformed into a {page_count}-page, {len(scenes)}-panel comic focused on {concepts[0].label if concepts else 'the main lesson'}.",
             "panel_count": len(scenes),
+            "page_count": page_count,
             "concepts": [asdict(concept) for concept in concepts],
             "relations": [asdict(relation) for relation in relations],
             "scenes": [asdict(scene) for scene in scenes],
@@ -639,11 +742,30 @@ class CominoteEngine:
                 "user_id": user_id,
                 "user_name": user_name,
                 "chunk_count": len(chunks),
+                "page_count": page_count,
+                "panels_per_page": max((len(page) for page in page_plan), default=PANELS_PER_COMIC_PAGE),
+                "source_section_count": len(source_sections),
+                "source_page_count": sum(1 for section in source_sections if section.source == "PDF"),
+                "page_image_files": [
+                    str(path.relative_to(self.output_dir))
+                    for path in page_paths
+                    if path.exists() and path.is_relative_to(self.output_dir)
+                ],
+                "page_image_urls": [
+                    f"/api/comics/{comic_id}/pages/{index + 1}"
+                    for index, _path in enumerate(page_paths)
+                ],
             },
         }
 
         self._write_metadata(comic_id, payload)
-        self._notify(progress_callback, "completed", 100, "Your comic is ready.", {"chunk_count": len(chunks)})
+        self._notify(
+            progress_callback,
+            "completed",
+            100,
+            "Your comic is ready.",
+            {"chunk_count": len(chunks), "panel_count": len(scenes), "page_count": page_count},
+        )
         return payload
 
     def get_comic(self, comic_id: str) -> dict:
@@ -670,6 +792,12 @@ class CominoteEngine:
         if not path.exists():
             raise FileNotFoundError(comic_id)
         return path
+
+    def page_image_path(self, comic_id: str, page_number: int) -> Path:
+        page_paths = self._comic_page_paths(comic_id)
+        if page_number < 1 or page_number > len(page_paths):
+            raise FileNotFoundError(comic_id)
+        return page_paths[page_number - 1]
 
     def list_theme_datasets(self) -> list[dict[str, Any]]:
         return [
@@ -699,17 +827,20 @@ class CominoteEngine:
 
     # ─── Input handling ──────────────────────────────────────────────────────
 
-    def _collect_input(self, *, text: str, uploaded_file, theme_slug: str = "") -> tuple[str, str, dict[str, Any] | None]:
+    def _collect_input(
+        self, *, text: str, uploaded_file, theme_slug: str = ""
+    ) -> tuple[str, str, dict[str, Any] | None, list[SourceSection]]:
         title_text = self._normalise_whitespace(text)
-        file_text = ""
+        file_sections: list[SourceSection] = []
         source_parts: list[str] = []
         theme_meta = None
         theme_text = ""
 
         if uploaded_file:
-            file_text = self._read_uploaded_file(uploaded_file)
+            file_sections = self._read_uploaded_sections(uploaded_file)
             source_parts.append("Upload")
 
+        text_sections = self._text_to_sections(title_text, source="Text", label_prefix="Text Section") if title_text else []
         if title_text:
             source_parts.append("Text")
 
@@ -717,19 +848,33 @@ class CominoteEngine:
             theme_meta = self._theme_datasets_by_slug.get(theme_slug)
             if theme_meta is None:
                 raise ValidationError("The selected theme could not be found.")
-            guidance = self._normalise_whitespace(f"{title_text} {file_text}")
-            theme_text = self._theme_excerpt(theme_meta, guidance)
+            guidance = self._normalise_whitespace(
+                " ".join([title_text, " ".join(section.text for section in file_sections)])
+            )
+            if not title_text and not file_sections:
+                theme_text = self._theme_excerpt(theme_meta, guidance)
             if theme_text:
                 source_parts.append("Theme")
 
-        combined_parts = [part for part in (title_text, file_text, theme_text) if part]
+        sections = [*text_sections, *file_sections]
+        if theme_text:
+            sections.append(
+                SourceSection(
+                    label=f"{theme_meta['title']} Theme",
+                    text=theme_text,
+                    source="Theme",
+                    index=len(sections) + 1,
+                )
+            )
+
+        combined_parts = [f"{section.label}: {section.text}" for section in sections if section.text]
         combined = self._normalise_whitespace("\n\n".join(combined_parts).strip())
         if not combined:
             raise ValidationError("Please add notes, upload a file, or choose a theme.")
         if len(combined) > MAX_TEXT_CHARS:
             raise ValidationError("Input exceeds the maximum supported size. Please stay under 25 million characters.")
         source_label = " + ".join(source_parts) if source_parts else "Text Input"
-        return combined, source_label, theme_meta
+        return combined, source_label, theme_meta, sections
 
     def _aggregate_chunks(
         self, chunks: list[str], subject: str, progress_callback: ProgressCallback | None = None
@@ -781,10 +926,13 @@ class CominoteEngine:
         if not top_concepts:
             raise ValidationError("Cominote could not find enough meaningful words to build a comic.")
 
-        all_sentences = all_sentences[:24]
+        all_sentences = all_sentences[:MAX_ANALYSIS_SENTENCES]
         return top_concepts, unique_relations, all_sentences
 
     def _read_uploaded_file(self, uploaded_file) -> str:
+        return "\n\n".join(section.text for section in self._read_uploaded_sections(uploaded_file))
+
+    def _read_uploaded_sections(self, uploaded_file) -> list[SourceSection]:
         if isinstance(uploaded_file, (str, Path)):
             path = Path(uploaded_file)
             filename = path.name
@@ -796,11 +944,11 @@ class CominoteEngine:
             if path.stat().st_size > MAX_FILE_SIZE:
                 raise ValidationError("Uploaded files must be 50 MB or smaller.")
             if suffix == ".txt":
-                return path.read_text(encoding="utf-8", errors="ignore")
+                return self._text_to_sections(path.read_text(encoding="utf-8", errors="ignore"), source="TXT", label_prefix="Text Section")
             if suffix == ".pdf":
-                return self._extract_pdf_text(path)
+                return self._extract_pdf_sections(path)
             if suffix == ".docx":
-                return self._extract_docx_text(path)
+                return self._extract_docx_sections(path)
             raise ValidationError(f"Unsupported upload type for {filename}.")
 
         filename = uploaded_file.filename or ""
@@ -815,28 +963,63 @@ class CominoteEngine:
             raise ValidationError("Uploaded files must be 50 MB or smaller.")
 
         if suffix == ".txt":
-            return raw.decode("utf-8", errors="ignore")
+            return self._text_to_sections(raw.decode("utf-8", errors="ignore"), source="TXT", label_prefix="Text Section")
         if suffix == ".pdf":
-            return self._extract_pdf_text(raw)
+            return self._extract_pdf_sections(raw)
         if suffix == ".docx":
-            return self._extract_docx_text(raw)
+            return self._extract_docx_sections(raw)
         raise ValidationError("Unsupported upload type.")
 
+    def _text_to_sections(self, text: str, *, source: str, label_prefix: str) -> list[SourceSection]:
+        cleaned = self._normalise_whitespace(text)
+        if not cleaned:
+            return []
+        chunks = _split_text_smart(cleaned, chunk_size=2_800)
+        return [
+            SourceSection(label=f"{label_prefix} {index}", text=chunk, source=source, index=index)
+            for index, chunk in enumerate(chunks, start=1)
+            if chunk
+        ]
+
     def _extract_pdf_text(self, source: bytes | Path) -> str:
+        return "\n\n".join(section.text for section in self._extract_pdf_sections(source))
+
+    def _extract_pdf_sections(self, source: bytes | Path) -> list[SourceSection]:
         if fitz is None:
             raise DependencyError("PDF upload support needs PyMuPDF installed in the Python environment.")
+        sections: list[SourceSection] = []
         if isinstance(source, Path):
             with fitz.open(str(source)) as document:
-                text = "\n".join(page.get_text("text") for page in document)
+                for index, page in enumerate(document, start=1):
+                    text = self._clean_extracted_page_text(page.get_text("text"))
+                    if text:
+                        sections.append(SourceSection(label=f"Page {index}", text=text, source="PDF", index=index))
         else:
             with fitz.open(stream=source, filetype="pdf") as document:
-                text = "\n".join(page.get_text("text") for page in document)
-        text = self._normalise_whitespace(text)
-        if not text:
+                for index, page in enumerate(document, start=1):
+                    text = self._clean_extracted_page_text(page.get_text("text"))
+                    if text:
+                        sections.append(SourceSection(label=f"Page {index}", text=text, source="PDF", index=index))
+        if not sections:
             raise ValidationError("The uploaded PDF did not contain extractable text.")
-        return text
+        return sections
+
+    @staticmethod
+    def _clean_extracted_page_text(text: str) -> str:
+        lines: list[str] = []
+        for raw_line in (text or "").splitlines():
+            line = re.sub(r"\s+", " ", raw_line).strip()
+            if not line:
+                continue
+            if re.fullmatch(r"(page\s*)?\d{1,4}", line, flags=re.IGNORECASE):
+                continue
+            lines.append(line)
+        return "\n".join(lines)
 
     def _extract_docx_text(self, source: bytes | Path) -> str:
+        return "\n\n".join(section.text for section in self._extract_docx_sections(source))
+
+    def _extract_docx_sections(self, source: bytes | Path) -> list[SourceSection]:
         if Document is None:
             raise DependencyError("DOCX upload support needs python-docx installed in the Python environment.")
         if isinstance(source, Path):
@@ -849,10 +1032,10 @@ class CominoteEngine:
             for paragraph in document.paragraphs
             if self._normalise_whitespace(paragraph.text)
         )
-        text = self._normalise_whitespace(text)
-        if not text:
+        sections = self._text_to_sections(text, source="DOCX", label_prefix="DOCX Section")
+        if not sections:
             raise ValidationError("The uploaded DOCX did not contain extractable text.")
-        return text
+        return sections
 
     @staticmethod
     def _normalise_whitespace(text: str) -> str:
@@ -1077,9 +1260,584 @@ class CominoteEngine:
         scenes = [intro, develop_one, develop_two, *examples, outro]
         return scenes[: min(max(len(scenes), 3), 6)]
 
+    def _scenes_from_sections(
+        self,
+        *,
+        title: str,
+        subject: str,
+        concepts: list[Concept],
+        relations: list[Relation],
+        sentences: list[str],
+        sections: list[SourceSection],
+        theme_title: str = "",
+    ) -> list[Scene]:
+        usable_sections = [section for section in sections if section.text.strip()]
+        if not usable_sections:
+            return self._scenes(
+                title=title,
+                subject=subject,
+                concepts=concepts,
+                relations=relations,
+                sentences=sentences,
+                theme_title=theme_title,
+            )
+
+        if len(usable_sections) > MAX_GENERATED_SCENES:
+            usable_sections = self._compact_sections_for_scene_budget(usable_sections, MAX_GENERATED_SCENES)
+
+        cast = self._story_cast(subject, concepts, sentences, theme_title)
+        backgrounds = BACKGROUND_LIBRARY[subject]
+        scenes: list[Scene] = []
+        concept_fallbacks = concepts or [Concept(label=subject.title(), score=1.0, kind="concept")]
+
+        for section in usable_sections:
+            section_sentences = self._section_candidate_sentences(section.text)
+            if not section_sentences:
+                continue
+
+            target = self._section_scene_target(section, section_sentences)
+            remaining_budget = MAX_GENERATED_SCENES - len(scenes)
+            if remaining_budget <= 0:
+                break
+            target = max(1, min(target, remaining_budget))
+            selected_sentences = self._select_section_sentences(section_sentences, target)
+
+            for local_index, sentence in enumerate(selected_sentences):
+                global_index = len(scenes)
+                focus = self._focus_for_sentence(sentence, concept_fallbacks, global_index)
+                speaker, role, _kind = cast[global_index % len(cast)]
+                mode = self._panel_mode(sentence, global_index, local_index, len(selected_sentences))
+                scenes.append(
+                    Scene(
+                        title=self._section_scene_title(mode, global_index),
+                        speaker=speaker,
+                        role=role,
+                        dialogue=self._scene_dialogue(
+                            section=section,
+                            sentence=sentence,
+                            focus=focus,
+                            title=title,
+                            local_index=local_index,
+                            section_total=len(selected_sentences),
+                            global_index=global_index,
+                            mode=mode,
+                        ),
+                        caption=self._scene_caption(sentence, focus, mode),
+                        background=backgrounds[global_index % len(backgrounds)],
+                        focus=focus,
+                    )
+                )
+
+        if not scenes:
+            return self._scenes(
+                title=title,
+                subject=subject,
+                concepts=concepts,
+                relations=relations,
+                sentences=sentences,
+                theme_title=theme_title,
+            )
+
+        while len(scenes) < 3 and sentences:
+            sentence = sentences[min(len(scenes), len(sentences) - 1)]
+            focus = self._focus_for_sentence(sentence, concept_fallbacks, len(scenes))
+            speaker, role, _kind = cast[len(scenes) % len(cast)]
+            mode = self._panel_mode(sentence, len(scenes), len(scenes), 3)
+            scenes.append(
+                Scene(
+                    title=self._section_scene_title(mode, len(scenes)),
+                    speaker=speaker,
+                    role=role,
+                    dialogue=self._scene_dialogue(
+                        section=SourceSection(label="Review", text=sentence, source="Text", index=len(scenes) + 1),
+                        sentence=sentence,
+                        focus=focus,
+                        title=title,
+                        local_index=len(scenes),
+                        section_total=3,
+                        global_index=len(scenes),
+                        mode=mode,
+                    ),
+                    caption=self._scene_caption(sentence, focus, mode),
+                    background=backgrounds[len(scenes) % len(backgrounds)],
+                    focus=focus,
+                )
+            )
+
+        return scenes
+
+    def _compact_sections_for_scene_budget(self, sections: list[SourceSection], budget: int) -> list[SourceSection]:
+        if len(sections) <= budget:
+            return sections
+        group_size = max(1, math.ceil(len(sections) / budget))
+        compacted: list[SourceSection] = []
+        for group_start in range(0, len(sections), group_size):
+            group = sections[group_start: group_start + group_size]
+            if not group:
+                continue
+            first, last = group[0], group[-1]
+            label = first.label if first.label == last.label else f"{first.label}-{last.label}"
+            text = " ".join(self._sentence_snippet(section.text) for section in group if section.text)
+            compacted.append(SourceSection(label=label, text=text, source=first.source, index=len(compacted) + 1))
+        return compacted[:budget]
+
+    def _section_candidate_sentences(self, text: str) -> list[str]:
+        candidates: list[str] = []
+        pending_heading = ""
+        raw_lines = self._logical_content_lines(text)
+        for raw_line in raw_lines:
+            clean = self._clean_source_sentence(raw_line)
+            if not clean:
+                continue
+            word_count = len(clean.split())
+            is_bullet = bool(re.match(r"^\s*(?:[-*•·]+|\d+[\).]|[A-Za-z][\).])\s+", raw_line))
+            if self._looks_like_heading(clean):
+                pending_heading = clean.rstrip(":")
+                continue
+
+            if is_bullet or word_count <= 32:
+                units = [clean]
+            else:
+                units = [self._clean_source_sentence(sentence) for sentence in self._sentences(clean)]
+
+            for unit in units:
+                if len(unit.split()) < 4:
+                    continue
+                if pending_heading and pending_heading.lower() not in unit.lower():
+                    unit = f"{pending_heading}: {unit}"
+                candidates.append(unit)
+
+            if word_count > 16 or re.search(r"[.!?]$", clean):
+                pending_heading = ""
+
+        if candidates:
+            return self._dedupe_sentence_candidates(candidates)[:60]
+
+        candidates = [
+            self._clean_source_sentence(sentence)
+            for sentence in self._sentences(self._normalise_whitespace(text))
+            if len(self._clean_source_sentence(sentence).split()) >= 4
+        ]
+        if candidates:
+            return self._dedupe_sentence_candidates(candidates)[:60]
+
+        shortened = self._clean_source_sentence(text)
+        return [shortened] if shortened else []
+
+    def _logical_content_lines(self, text: str) -> list[str]:
+        lines: list[str] = []
+        buffer = ""
+        for raw_line in (text or "").splitlines():
+            stripped = raw_line.strip()
+            clean = self._clean_source_sentence(stripped)
+            if not clean:
+                continue
+            is_bullet = bool(re.match(r"^\s*(?:[-*•·]+|\d+[\).]|[A-Za-z][\).])\s+", stripped))
+            is_heading = self._looks_like_heading(clean)
+            if is_heading or is_bullet:
+                if buffer:
+                    lines.append(buffer)
+                    buffer = ""
+                lines.append(stripped)
+                continue
+
+            buffer = f"{buffer} {clean}".strip() if buffer else clean
+            if re.search(r"[.!?]$", clean):
+                lines.append(buffer)
+                buffer = ""
+
+        if buffer:
+            lines.append(buffer)
+        return lines
+
+    def _section_scene_target(self, section: SourceSection, sentences: list[str]) -> int:
+        word_count = len(section.text.split())
+        if section.source == "PDF":
+            if word_count >= 700 or len(sentences) >= 5:
+                return 4
+            if word_count >= 320 or len(sentences) >= 3:
+                return 3
+            if word_count >= 220 or len(sentences) >= 2:
+                return 2
+            return 1
+        if word_count >= 1100 or len(sentences) >= 14:
+            return 4
+        if word_count >= 620 or len(sentences) >= 9:
+            return 3
+        if word_count >= 260 or len(sentences) >= 5:
+            return 2
+        return 1
+
+    def _select_section_sentences(self, sentences: list[str], target: int) -> list[str]:
+        if len(sentences) <= target:
+            return sentences
+
+        selected_indexes: list[int] = []
+        selected_keys: set[str] = set()
+
+        def add(index: int) -> None:
+            key = self._sentence_selection_key(sentences[index])
+            if key and key in selected_keys:
+                return
+            selected_indexes.append(index)
+            if key:
+                selected_keys.add(key)
+
+        if target >= 2:
+            add(0)
+
+        scored: list[tuple[int, int]] = []
+        for index, sentence in enumerate(sentences):
+            scored.append((self._sentence_importance_score(sentence, index, len(sentences)), index))
+
+        for _score, index in sorted(scored, reverse=True):
+            add(index)
+            if len(selected_indexes) >= target:
+                break
+
+        if not selected_indexes and scored:
+            selected_indexes.append(max(scored)[1])
+
+        return [sentences[index] for index in sorted(selected_indexes)[:target]]
+
+    def _dedupe_sentence_candidates(self, candidates: list[str]) -> list[str]:
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for candidate in candidates:
+            key = self._sentence_selection_key(candidate)
+            if key and key in seen:
+                continue
+            if key:
+                seen.add(key)
+            deduped.append(candidate)
+        return deduped
+
+    def _sentence_importance_score(self, sentence: str, index: int, total: int) -> int:
+        lower = sentence.lower()
+        score_terms = (
+            "important", "main", "means", "because", "therefore", "example",
+            "for example", "such as", "including", "first", "second", "third",
+            "result", "cause", "effect", "however", "finally", "conclusion",
+            "definition", "explains", "advantage", "disadvantage", "step",
+            "process", "feature", "quality", "used to", "helps", "must",
+        )
+        score = min(len(sentence.split()), 44)
+        score += sum(16 for term in score_terms if term in lower)
+        if self._looks_like_heading(sentence.split(":", 1)[0]):
+            score += 24
+        if re.search(r"\b(?:is|are|means|refers to|represents|defined as)\b", lower):
+            score += 22
+        if re.search(r"^\s*(?:[-*•·]+|\d+[\).]|[A-Za-z][\).])\s+", sentence):
+            score += 18
+        score += len(re.findall(r"\b[A-Z]{2,}\b", sentence[:240])) * 8
+        score += len(re.findall(r"\b[A-Z][a-z]+\b", sentence[:240])) * 2
+        if re.search(r"\d", sentence):
+            score += 8
+        if index == 0:
+            score += 10
+        if index == total - 1:
+            score += 6
+        return score
+
+    def _sentence_selection_key(self, sentence: str) -> str:
+        tokens = [
+            token.lower()
+            for token in self._tokens(self._clean_source_sentence(sentence))
+            if len(token) > 3 and token.lower() not in self._stopwords()
+        ]
+        return " ".join(tokens[:8])
+
+    def _focus_for_sentence(self, sentence: str, concepts: list[Concept], scene_index: int) -> str:
+        content = sentence.split(":", 1)[-1] if ":" in sentence else sentence
+        lower = content.lower()
+        priority_terms = (
+            "furps", "software design", "software testing", "user interface design",
+            "interface design", "maintainability", "usability", "modularity",
+            "coupling", "cohesion", "abstraction", "encapsulation", "requirements",
+        )
+        ordered_terms = [
+            *[term for term in priority_terms if term in TECH_TERM_TEACHING],
+            *sorted(
+                (term for term in TECH_TERM_TEACHING if term not in priority_terms),
+                key=len,
+                reverse=True,
+            ),
+        ]
+        for term in ordered_terms:
+            if re.search(rf"\b{re.escape(term)}\b", lower):
+                return term.upper() if term in {"api", "furps"} else term.capitalize()
+        for concept in concepts:
+            if concept.label.lower() in lower:
+                return concept.label
+        words = [
+            token
+            for token in self._tokens(content)
+            if len(token) > 3
+            and token.lower() not in self._stopwords()
+            and token.lower() not in {"should", "would", "could", "becomes", "because", "important", "using"}
+        ]
+        if words:
+            counts = Counter(token.title() for token in words)
+            return counts.most_common(1)[0][0]
+        return concepts[scene_index % len(concepts)].label if concepts else "Main Idea"
+
+    def _panel_mode(self, sentence: str, global_index: int, local_index: int, section_total: int) -> str:
+        lower = sentence.lower()
+        if any(term in lower for term in ("for example", "such as", "including", "instance")):
+            return "example"
+        if re.search(r"\b(?:is|are|means|refers to|represents|defined as)\b", lower):
+            return "concept"
+        if any(term in lower for term in ("because", "therefore", "so that", "important", "purpose", "helps")):
+            return "why"
+        if section_total > 1 and local_index == section_total - 1:
+            return "recap"
+        return PANEL_MODE_SEQUENCE[global_index % len(PANEL_MODE_SEQUENCE)]
+
+    def _section_scene_title(self, mode: str, global_index: int) -> str:
+        title_map = {
+            "question": "Concept Intro",
+            "concept": "Concept Intro",
+            "analogy": "Think Like This",
+            "why": "Why It Matters",
+            "example": "Real Example",
+            "tip": "Quick Tip",
+            "connect": "Connect Ideas",
+            "recap": "Final Idea",
+        }
+        return title_map.get(mode, EDUCATIONAL_FLOW_LABELS[global_index % len(EDUCATIONAL_FLOW_LABELS)])
+
+    def _scene_dialogue(
+        self,
+        *,
+        section: SourceSection,
+        sentence: str,
+        focus: str,
+        title: str,
+        local_index: int,
+        section_total: int,
+        global_index: int,
+        mode: str,
+    ) -> str:
+        focus_name = self._friendly_focus(focus)
+        core = self._core_teaching_sentence(sentence, focus_name)
+        analogy = self._analogy_for_focus(focus_name, sentence)
+        benefit = self._benefit_phrase(sentence, focus_name)
+        memory = self._memory_cue(focus_name, sentence)
+
+        if mode == "question":
+            line = f"Ever wondered where {focus_name.lower()} fits? {core}"
+        elif mode == "concept":
+            line = core
+        elif mode == "analogy":
+            line = f"Think of {focus_name.lower()} like {analogy}. {core}"
+        elif mode == "why":
+            line = f"{focus_name} matters because {benefit}. {core}"
+        elif mode == "example":
+            line = f"Example time: {self._example_line(sentence, focus_name)}"
+        elif mode == "tip":
+            line = f"Quick memory trick: {memory}. {core}"
+        elif mode == "connect":
+            line = f"This connects to the next idea: {core}"
+        else:
+            line = f"Final idea: {core}"
+
+        return self._finish_sentence(self._shorten_text(line, width=88))
+
+    def _scene_caption(self, sentence: str, focus: str, mode: str) -> str:
+        focus_name = self._friendly_focus(focus)
+        core = self._core_teaching_sentence(sentence, focus_name)
+        if mode == "why":
+            caption = f"Why it sticks: {self._benefit_phrase(sentence, focus_name)}."
+        elif mode == "example":
+            caption = f"Try it with a small example: {self._example_line(sentence, focus_name)}"
+        elif mode == "tip":
+            caption = f"Memory cue: {self._memory_cue(focus_name, sentence)}."
+        elif mode == "connect":
+            caption = f"Connect it: ask what changes before and after {focus_name.lower()}."
+        elif mode == "recap":
+            caption = f"Takeaway: {core}"
+        else:
+            caption = f"Read it simply: {core}"
+        return self._finish_sentence(self._shorten_text(caption, width=84))
+
+    def _core_teaching_sentence(self, sentence: str, focus: str) -> str:
+        clean = self._clean_source_sentence(sentence)
+        term_line = self._term_teaching_line(clean, focus)
+        if term_line:
+            return term_line
+
+        definition = self._definition_teaching_line(clean)
+        if definition:
+            return definition
+
+        human = self._humanize_text(clean)
+        if not human:
+            human = f"{focus} is the idea to remember here."
+        return self._finish_sentence(self._shorten_text(human, width=142))
+
+    def _term_teaching_line(self, sentence: str, focus: str) -> str:
+        lower = f"{sentence} {focus}".lower()
+        focus_lower = focus.lower()
+        content_lower = sentence.lower().split(":", 1)[-1]
+        priority_terms = (
+            "furps", "software design", "software testing", "user interface design",
+            "interface design", "maintainability", "usability", "reliability",
+            "performance", "supportability", "functionality",
+        )
+        ordered_terms = [
+            *[term for term in priority_terms if term in TECH_TERM_TEACHING],
+            *sorted(
+                (term for term in TECH_TERM_TEACHING if term not in priority_terms),
+                key=len,
+                reverse=True,
+            ),
+        ]
+
+        for search_area in (focus_lower, content_lower, lower):
+            for term in ordered_terms:
+                if re.search(rf"\b{re.escape(term)}\b", search_area):
+                    display = term.upper() if term in {"api", "furps"} else term.capitalize()
+                    verb = "are" if term.endswith("s") and term not in {"furps"} else "is"
+                    return f"{display} {verb} {TECH_TERM_TEACHING[term]}."
+        return ""
+
+    def _definition_teaching_line(self, sentence: str) -> str:
+        candidate = re.sub(r"^[A-Z][A-Za-z0-9 /&()_-]{1,70}:\s*", "", sentence.strip())
+        match = re.match(
+            r"^([A-Za-z][A-Za-z0-9 /&()_-]{1,70}?)\s+(?:is|are|means|refers to|represents|is defined as|can be defined as)\s+(.{8,})",
+            candidate,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            return ""
+        subject = self._clean_source_sentence(match.group(1)).strip(" :-")
+        detail = self._humanize_text(match.group(2)).strip(" .")
+        if not subject or len(subject.split()) > 8 or subject.lower().endswith((" that", " which")) or not detail:
+            return ""
+        return self._finish_sentence(f"{subject} simply means {self._shorten_text(detail, width=104)}")
+
+    def _humanize_text(self, sentence: str) -> str:
+        clean = self._clean_source_sentence(sentence)
+        clean = re.sub(r"\bcreates?\s+a\s+representation\s+of\b", "turns ideas into a clear model of", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"\bcan\s+be\s+used\s+to\b", "helps you", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"\bis\s+used\s+to\b", "helps you", clean, flags=re.IGNORECASE)
+        for pattern, replacement in JARGON_REPLACEMENTS:
+            clean = re.sub(pattern, replacement, clean, flags=re.IGNORECASE)
+        clean = re.sub(r"\s+([,.;:!?])", r"\1", clean)
+        clean = re.sub(r"\s+", " ", clean).strip()
+        return self._finish_sentence(self._shorten_text(clean, width=142)) if clean else ""
+
+    def _clean_source_sentence(self, sentence: str) -> str:
+        clean = self._normalise_whitespace(sentence)
+        clean = re.sub(r"^\s*(?:[-*•·]+|\d+[\).]|[A-Za-z][\).])\s+", "", clean)
+        clean = re.sub(r"\bPage\s+\d+(?:\s+of\s+\d+)?\b", "", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"\b(?:Figure|Fig\.|Table)\s+\d+(?:\.\d+)?\b", "", clean, flags=re.IGNORECASE)
+        clean = re.sub(r"\[[^\]]{1,20}\]", "", clean)
+        clean = re.sub(r"https?://\S+", "", clean)
+        clean = re.sub(r"\s+([,.;:!?])", r"\1", clean)
+        return self._normalise_whitespace(clean).strip(" -")
+
+    def _looks_like_heading(self, text: str) -> bool:
+        clean = self._clean_source_sentence(text).strip(":")
+        words = clean.split()
+        if len(words) < 2 or len(words) > 12:
+            return False
+        if re.search(r"[.!?]$", clean):
+            return False
+        if sum(1 for word in words if len(word) > 2) < 2:
+            return False
+        titleish = sum(1 for word in words if word[:1].isupper() or word.isupper())
+        return titleish >= max(1, len(words) // 2) or clean.isupper()
+
+    def _friendly_focus(self, focus: str) -> str:
+        cleaned = self._clean_source_sentence(focus).strip(" .:;")
+        words = cleaned.split()
+        if not words:
+            return "this idea"
+        if len(words) > 4:
+            return "this idea"
+        joined = " ".join(words)
+        return joined.upper() if joined.lower() in {"api", "furps"} else joined[:1].upper() + joined[1:]
+
+    def _analogy_for_focus(self, focus: str, sentence: str) -> str:
+        lower = f"{focus} {sentence}".lower()
+        if any(term in lower for term in ("software design", "architecture", "design")):
+            return "a blueprint before building a house"
+        if "algorithm" in lower:
+            return "a recipe that tells you each step in order"
+        if "database" in lower:
+            return "a labelled cupboard where information is easy to find"
+        if "requirement" in lower:
+            return "a project checklist before anyone starts building"
+        if "testing" in lower:
+            return "practice questions before the final exam"
+        if "model" in lower:
+            return "a map that makes a big topic easier to explore"
+        if any(term in lower for term in ("quality", "furps", "performance", "usability", "reliability")):
+            return "a report card for how well software works"
+        return "a sticky note that keeps the main idea visible"
+
+    def _benefit_phrase(self, sentence: str, focus: str) -> str:
+        clean = self._without_terminal_period(self._humanize_text(sentence))
+        lower = clean.lower()
+        if "because" in lower:
+            return self._shorten_text(clean[lower.index("because") + len("because"):].strip(" ,."), width=86)
+        if "so that" in lower:
+            return self._shorten_text(clean[lower.index("so that") + len("so that"):].strip(" ,."), width=86)
+        if "helps" in lower:
+            phrase = self._shorten_text(clean[lower.index("helps"):].strip(" ,."), width=86)
+            return phrase if phrase.lower().startswith("it ") else f"it {phrase}"
+        term_line = self._term_teaching_line(sentence, focus)
+        if term_line:
+            return "it gives you a quick way to judge the topic"
+        return "it tells you what to notice, remember, and use later"
+
+    def _example_line(self, sentence: str, focus: str) -> str:
+        raw = self._clean_source_sentence(sentence)
+        raw_lower = raw.lower()
+        for marker in ("for example", "such as", "including", "instance"):
+            if marker in raw_lower:
+                example = raw[raw_lower.index(marker):].strip(" ,:")
+                return self._finish_sentence(self._shorten_text(self._humanize_text(example), width=126))
+        clean = self._without_terminal_period(self._humanize_text(sentence))
+        lower = clean.lower()
+        if "software" in lower or "app" in lower:
+            return f"imagine a class app where {focus.lower()} helps the team make cleaner choices."
+        return self._finish_sentence(self._shorten_text(clean, width=126))
+
+    def _memory_cue(self, focus: str, sentence: str) -> str:
+        if re.search(r"\bFURPS\b", sentence, flags=re.IGNORECASE):
+            return "FURPS equals five checks for software quality"
+        acronym = re.search(r"\b[A-Z]{3,}\b", sentence)
+        if acronym:
+            return f"{acronym.group(0)} is your shortcut word for this part"
+        return f"link {focus.lower()} with what it does, why it matters, and one example"
+
+    def _shorten_text(self, text: str, *, width: int) -> str:
+        clean = self._normalise_whitespace(text)
+        if len(clean) <= width:
+            return clean
+        return textwrap.shorten(clean, width=width, placeholder="...")
+
+    @staticmethod
+    def _without_terminal_period(text: str) -> str:
+        clean = text.strip()
+        if clean.endswith(".") and not clean.endswith("..."):
+            return clean[:-1]
+        return clean
+
+    @staticmethod
+    def _finish_sentence(text: str) -> str:
+        clean = text.strip()
+        if not clean:
+            return clean
+        if clean.endswith(("...", ".", "!", "?")):
+            return clean
+        return f"{clean}."
+
     @staticmethod
     def _sentence_snippet(sentence: str) -> str:
-        return textwrap.shorten(sentence, width=86, placeholder="...")
+        return textwrap.shorten(ComiNoteEngine._normalise_whitespace(sentence), width=86, placeholder="...")
 
     def _story_cast(
         self,
@@ -1612,6 +2370,15 @@ class CominoteEngine:
                 "bg_end": "#ecfbf7",
                 "glow": "rgba(125, 77, 255, 0.16)",
             },
+            "horror": {
+                "accent": "#4c1d95",
+                "accent_2": "#dc2626",
+                "accent_3": "#f8fafc",
+                "surface": "#f3f0ff",
+                "bg_start": "#ddd6fe",
+                "bg_end": "#111827",
+                "glow": "rgba(76, 29, 149, 0.22)",
+            },
         }
         return dict(defaults.get(theme_profile_slug, defaults["cartoon_kids"]))
 
@@ -1623,6 +2390,7 @@ class CominoteEngine:
             "cartoon_kids": ["halftone dots", "playful bubbles", "bright stickers"],
             "manga": ["ink speed lines", "dramatic boxes", "tone textures"],
             "fantasy": ["glow runes", "quest frames", "magic trails"],
+            "horror": ["cinematic fog", "spotlight shadows", "mystery glows"],
         }
         return list(defaults.get(theme_profile_slug, defaults["cartoon_kids"]))
 
@@ -1657,6 +2425,30 @@ class CominoteEngine:
             score += max(10, len(label.split()) * 8)
         return score
 
+    def _exact_theme_render_entry(self, *, theme_meta: dict[str, Any] | None = None, title: str = "") -> dict[str, Any] | None:
+        keys = {
+            self._slugify(str(value))
+            for value in (
+                title,
+                (theme_meta or {}).get("slug", ""),
+                (theme_meta or {}).get("title", ""),
+            )
+            if str(value).strip()
+        }
+        if not keys:
+            return None
+        for entry in self._theme_render_entries:
+            if not isinstance(entry, dict):
+                continue
+            entry_keys = {
+                self._slugify(str(entry.get("id") or "")),
+                self._slugify(str(entry.get("label") or "")),
+                *[self._slugify(str(keyword)) for keyword in (entry.get("keywords") or [])],
+            }
+            if keys & {key for key in entry_keys if key}:
+                return entry
+        return None
+
     def _pick_theme_anchor(self, title: str) -> str:
         tokens = [
             token
@@ -1687,6 +2479,7 @@ class CominoteEngine:
             "superhero": ("Sentinel", "hero-guardian", "teacher", "hero jacket", "powered leggings", "comic emblem", "hero boots", "Hero"),
             "manga": ("Echo", "manga-hero", "student", "ink-lined coat", "dramatic trousers", "speed scarf", "comic boots", "Manga"),
             "fantasy": ("Quest", "fantasy-ranger", "student", "travel cloak", "quest trousers", "rune compass", "trail boots", "Fantasy"),
+            "horror": ("Nocturne", "mystic-hero", "student", "shadow jacket", "night trousers", "glow charm", "silent boots", "Horror"),
             "cartoon_kids": ("Spark", "explorer", "student", "playful tee", "adventure pants", "story badge", "comic sneakers", "Story"),
         }
         suffix, variant, category, top, bottom, accessory, shoes, badge = profile_map.get(
@@ -1760,6 +2553,19 @@ class CominoteEngine:
             )
             base = self._default_theme_render(profile_slug)
             merged = self._merge_dicts(base, explicit)
+            merged["theme_profile"] = profile_slug
+            return merged
+
+        exact_entry = self._exact_theme_render_entry(theme_meta=theme_meta, title=title)
+        if exact_entry:
+            profile_slug = str(
+                exact_entry.get("theme_profile")
+                or theme_profile_slug
+                or (theme_meta or {}).get("theme_profile")
+                or "cartoon_kids"
+            )
+            base = self._default_theme_render(profile_slug)
+            merged = self._merge_dicts(base, exact_entry)
             merged["theme_profile"] = profile_slug
             return merged
 
@@ -2092,6 +2898,11 @@ class CominoteEngine:
                 return f"#{short[0] * 2}{short[1] * 2}{short[2] * 2}"
         return fallback
 
+    @staticmethod
+    def _blend_hex(color: str, target: str = "#ffffff", amount: float = 0.5) -> str:
+        amount = max(0.0, min(1.0, amount))
+        return _rgb_to_hex(_lerp_color(_hex_to_rgb(color), _hex_to_rgb(target), amount))
+
     def _record_blob(self, record: dict[str, Any]) -> str:
         costume = record.get("costume") or {}
         parts = [
@@ -2400,7 +3211,10 @@ class CominoteEngine:
             5: ["happy", "thinking", "excited", "surprised", "proud"],
             6: ["happy", "thinking", "excited", "surprised", "proud", "happy"],
         }
-        return sequences.get(panel_count, ["happy"] * panel_count)
+        if panel_count in sequences:
+            return sequences[panel_count]
+        pattern = ["happy", "thinking", "excited", "surprised", "proud", "happy"]
+        return [pattern[index % len(pattern)] for index in range(panel_count)]
 
     def _pick_dataset_emotion(self, emotion_name: str) -> dict[str, Any]:
         for record in self._dataset_emotions:
@@ -2444,13 +3258,13 @@ class CominoteEngine:
             return self._dataset_bubbles_by_type.get("manga_box", {"type": "manga_box", "fill": "#ffffff"})
         if theme_profile_slug == "pixar":
             return self._dataset_bubbles_by_type.get("pixar_round", {"type": "pixar_round", "fill": "#fff8f1"})
-        if theme_profile_slug == "superhero" and emotion_name in {"excited", "surprised", "shocked"}:
+        if theme_profile_slug == "superhero" and emotion_name in {"excited", "surprised", "shocked"} and len(scene.dialogue) <= 72:
             return self._dataset_bubbles_by_type.get("action_burst", {"type": "action_burst", "fill": "#fff9c4"})
         if emotion_name == "thinking":
             return self._dataset_bubbles_by_type.get("thought_bubble", {"type": "thought_bubble", "fill": "#e8eaf6"})
         if emotion_name in {"excited", "surprised", "shocked"} and len(scene.dialogue) <= 42:
             return self._dataset_bubbles_by_type.get("shouting", {"type": "shouting", "fill": "#fff9c4"})
-        if preferred_type:
+        if preferred_type and not (preferred_type == "action_burst" and len(scene.dialogue) > 72):
             preferred = self._dataset_bubbles_by_type.get(preferred_type)
             if preferred:
                 return preferred
@@ -2528,6 +3342,7 @@ class CominoteEngine:
             pose = self._pick_dataset_pose(scene, emotion, theme_profile_slug)
             bubble = self._pick_dataset_bubble(scene, emotion, theme_profile)
             sfx = self._pick_dataset_sfx(subject, emotion, index, theme_profile_slug)
+            theme_elements = theme_render.get("comic_elements") or self._theme_render_comic_elements(theme_profile_slug)
             panels.append(
                 {
                     "character": character,
@@ -2537,6 +3352,8 @@ class CominoteEngine:
                     "bubble": bubble,
                     "sfx": sfx,
                     "theme_profile": theme_profile,
+                    "theme_render_id": theme_render.get("id", ""),
+                    "theme_comic_elements": theme_elements,
                 }
             )
 
@@ -2551,91 +3368,176 @@ class CominoteEngine:
             "cast_sources": sorted({(panel.get("character") or {}).get("source", "dataset") for panel in panels}),
         }
 
+    def _paginate_story_indices(self, scene_count: int) -> list[list[int]]:
+        if scene_count <= 0:
+            return [[]]
+        if scene_count <= 2:
+            return [list(range(scene_count))]
+
+        pages: list[list[int]] = []
+        index = 0
+        page_index = 0
+        while index < scene_count:
+            remaining = scene_count - index
+            if remaining <= 4:
+                target = remaining
+            else:
+                target = PANEL_PAGE_PATTERN[page_index % len(PANEL_PAGE_PATTERN)]
+                target = min(target, remaining)
+                if remaining - target == 1:
+                    target = target + 1 if target < 4 else target - 1
+            target = max(2, min(4, target, remaining))
+            pages.append(list(range(index, index + target)))
+            index += target
+            page_index += 1
+        return pages
+
+    def _layout_variant(self, panel_count: int, layout_style: str, page_number: int) -> str:
+        if panel_count <= 1:
+            return "solo_splash"
+        if panel_count == 2:
+            return "wide_pair" if page_number % 2 else "stacked_pair"
+        if panel_count == 3:
+            variants = (
+                "hero_top_two_bottom",
+                "three_columns",
+                "tall_left_stack_right",
+                "two_top_wide_bottom",
+                "manga_mixed_three",
+            )
+            if layout_style == "manga_cascade":
+                variants = ("tall_left_stack_right", "manga_mixed_three", "three_columns", "hero_top_two_bottom")
+            return variants[(page_number - 1) % len(variants)]
+        variants = (
+            "four_grid",
+            "wide_top_three_bottom",
+            "tall_left_two_right_bottom",
+            "zig_zag_four",
+            "manga_mixed_four",
+        )
+        if layout_style == "action_splash":
+            variants = ("wide_top_three_bottom", "four_grid", "zig_zag_four", "tall_left_two_right_bottom")
+        elif layout_style == "cinematic_grid":
+            variants = ("tall_left_two_right_bottom", "wide_top_three_bottom", "four_grid", "manga_mixed_four")
+        elif layout_style == "manga_cascade":
+            variants = ("manga_mixed_four", "tall_left_two_right_bottom", "zig_zag_four", "four_grid")
+        return variants[(page_number - 1) % len(variants)]
+
     def _layout_boxes(
         self,
         panel_count: int,
         margin: int,
         gutter: int,
         layout_style: str = "balanced_grid",
+        page_number: int = 1,
     ) -> list[tuple[int, int, int, int, int]]:
-        if layout_style == "action_splash":
-            gutter += 4
-            content_w = 1440
-        elif layout_style == "cinematic_grid":
-            content_w = 1420
-        elif layout_style == "manga_cascade":
+        content_w = 1420 if layout_style in {"action_splash", "cinematic_grid"} else 1400
+        if layout_style == "manga_cascade":
             content_w = 1380
-        else:
-            content_w = 1400
         half_w = (content_w - gutter) // 2
         third_w = (content_w - gutter * 2) // 3
-        boxes: list[tuple[int, int, int, int, int]] = []
-
-        if layout_style == "manga_cascade":
-            if panel_count <= 1:
-                return [(margin, 0, content_w, 760, 0)]
-            if panel_count == 2:
-                left_w = int(content_w * 0.56)
-                right_w = content_w - left_w - gutter
-                return [
-                    (margin, 0, left_w, 720, 0),
-                    (margin + left_w + gutter, 0, right_w, 720, 1),
-                ]
-            if panel_count == 3:
-                left_w = int(content_w * 0.56)
-                right_w = content_w - left_w - gutter
-                return [
-                    (margin, 0, left_w, 760, 0),
-                    (margin + left_w + gutter, 0, right_w, 360, 1),
-                    (margin + left_w + gutter, 360 + gutter, right_w, 400, 2),
-                ]
-            top_h = 360
-            tall_h = 360
-            bottom_h = 300
-            boxes.append((margin, 0, content_w, top_h, 0))
-            boxes.append((margin, top_h + gutter, half_w, tall_h, 1))
-            boxes.append((margin + half_w + gutter, top_h + gutter, half_w, tall_h, 2))
-            bottom_y = top_h + gutter + tall_h + gutter
-            remaining = panel_count - 3
-            if remaining <= 1:
-                boxes.append((margin, bottom_y, content_w, bottom_h, 3))
-                return boxes[:panel_count]
-            col_w = (content_w - gutter) // 2
-            for index in range(min(remaining, 2)):
-                boxes.append((margin + index * (col_w + gutter), bottom_y, col_w, bottom_h, index + 3))
-            return boxes[:panel_count]
+        variant = self._layout_variant(panel_count, layout_style, page_number)
 
         if panel_count <= 1:
-            return [(margin, 0, content_w, 480, 0)]
+            return [(margin, 0, content_w, 560, 0)]
         if panel_count == 2:
+            if variant == "stacked_pair":
+                return [
+                    (margin, 0, content_w, 330, 0),
+                    (margin, 330 + gutter, content_w, 330, 1),
+                ]
             return [
-                (margin, 0, half_w, 360, 0),
-                (margin + half_w + gutter, 0, half_w, 360, 1),
+                (margin, 0, half_w, 420, 0),
+                (margin + half_w + gutter, 0, half_w, 420, 1),
             ]
         if panel_count == 3:
+            if variant == "hero_top_two_bottom":
+                top_h = 360
+                bottom_h = 330
+                return [
+                    (margin, 0, content_w, top_h, 0),
+                    (margin, top_h + gutter, half_w, bottom_h, 1),
+                    (margin + half_w + gutter, top_h + gutter, half_w, bottom_h, 2),
+                ]
+            if variant == "three_columns":
+                return [
+                    (margin + index * (third_w + gutter), 0, third_w, 680, index)
+                    for index in range(3)
+                ]
+            if variant == "tall_left_stack_right":
+                left_w = int(content_w * 0.48)
+                right_w = content_w - left_w - gutter
+                stacked_h = 330
+                return [
+                    (margin, 0, left_w, stacked_h * 2 + gutter, 0),
+                    (margin + left_w + gutter, 0, right_w, stacked_h, 1),
+                    (margin + left_w + gutter, stacked_h + gutter, right_w, stacked_h, 2),
+                ]
+            if variant == "manga_mixed_three":
+                left_w = int(content_w * 0.56)
+                right_w = content_w - left_w - gutter
+                return [
+                    (margin, 0, left_w, 700, 0),
+                    (margin + left_w + gutter, 0, right_w, 335, 1),
+                    (margin + left_w + gutter, 335 + gutter, right_w, 341, 2),
+                ]
             return [
-                (margin, 0, half_w, 320, 0),
-                (margin + half_w + gutter, 0, half_w, 320, 1),
-                (margin, 320 + gutter, half_w, 320, 2),
+                (margin, 0, half_w, 340, 0),
+                (margin + half_w + gutter, 0, half_w, 340, 1),
+                (margin, 340 + gutter, content_w, 370, 2),
             ]
         if panel_count == 4:
+            if variant == "wide_top_three_bottom":
+                top_h = 350
+                bottom_h = max(320, MIN_RENDER_PANEL_HEIGHT)
+                return [
+                    (margin, 0, content_w, top_h, 0),
+                    *[
+                        (margin + index * (third_w + gutter), top_h + gutter, third_w, bottom_h, index + 1)
+                        for index in range(3)
+                    ],
+                ]
+            if variant == "tall_left_two_right_bottom":
+                left_w = int(content_w * 0.46)
+                right_w = content_w - left_w - gutter
+                top_right_h = 300
+                bottom_h = 330
+                return [
+                    (margin, 0, left_w, top_right_h * 2 + gutter, 0),
+                    (margin + left_w + gutter, 0, right_w, top_right_h, 1),
+                    (margin + left_w + gutter, top_right_h + gutter, right_w, top_right_h, 2),
+                    (margin, top_right_h * 2 + gutter * 2, content_w, bottom_h, 3),
+                ]
+            if variant == "zig_zag_four":
+                large_w = int(content_w * 0.56)
+                small_w = content_w - large_w - gutter
+                top_h = 330
+                bottom_h = 330
+                return [
+                    (margin, 0, large_w, top_h, 0),
+                    (margin + large_w + gutter, 0, small_w, top_h, 1),
+                    (margin, top_h + gutter, small_w, bottom_h, 2),
+                    (margin + small_w + gutter, top_h + gutter, large_w, bottom_h, 3),
+                ]
+            if variant == "manga_mixed_four":
+                top_h = 340
+                bottom_h = max(330, MIN_RENDER_PANEL_HEIGHT)
+                return [
+                    (margin, 0, content_w, top_h, 0),
+                    *[
+                        (margin + index * (third_w + gutter), top_h + gutter, third_w, bottom_h, index + 1)
+                        for index in range(3)
+                    ],
+                ]
             return [
                 (margin, 0, half_w, 320, 0),
                 (margin + half_w + gutter, 0, half_w, 320, 1),
                 (margin, 320 + gutter, half_w, 320, 2),
                 (margin + half_w + gutter, 320 + gutter, half_w, 320, 3),
-            ]
-        if panel_count == 5:
-            return [
-                (margin, 0, half_w, 320, 0),
-                (margin + half_w + gutter, 0, half_w, 320, 1),
-                (margin, 320 + gutter, half_w, 320, 2),
-                (margin + half_w + gutter, 320 + gutter, half_w, 320, 3),
-                (margin, 640 + gutter * 2, half_w, 320, 4),
             ]
 
-        # Uniform 2-column grid layout for better organization
         panel_h = 320
+        boxes: list[tuple[int, int, int, int, int]] = []
         row = 0
         for index in range(panel_count):
             col = index % 2
@@ -2753,7 +3655,227 @@ class CominoteEngine:
             remaining_words = cleaned.split()[sum(len(line.split()) for line in visible[:-1]):]
             visible[-1] = self._truncate_line(draw, " ".join(remaining_words), font, max_width)
             lines = visible
+        while len(lines) > 1 and self._text_size(draw, "\n".join(lines), font, spacing=spacing)[1] > max_height:
+            visible = lines[:-1]
+            remaining_words = cleaned.split()[sum(len(line.split()) for line in visible[:-1]):]
+            visible[-1] = self._truncate_line(draw, " ".join(remaining_words), font, max_width)
+            lines = visible
         return "\n".join(lines), font
+
+    def _estimate_bubble_fit(
+        self,
+        draw,
+        text: str,
+        bubble_w: int,
+        max_bubble_h: int,
+        bubble_type: str,
+        body_family: str,
+        *,
+        start_size: int,
+        min_size: int,
+        max_lines: int,
+    ) -> tuple[int, int]:
+        bubble_type = "normal" if bubble_type == "action_burst" else bubble_type
+        if bubble_type == "shouting":
+            pad_x = 70 if bubble_w > 360 else 54 if bubble_w > 220 else 36
+            pad_y = 30 if max_bubble_h > 130 else 22
+        else:
+            pad_x = 50 if bubble_w > 360 else 40 if bubble_w > 230 else 28
+            pad_y = 24 if max_bubble_h > 118 else 18
+        wrapped, font = self._fit_text_block(
+            draw,
+            text,
+            max(52, bubble_w - pad_x * 2),
+            max(28, max_bubble_h - pad_y * 2),
+            start_size=start_size,
+            min_size=min_size,
+            bold=bubble_type == "shouting",
+            family=body_family,
+            spacing=7,
+            max_lines=max_lines,
+        )
+        _text_w, text_h = self._text_size(draw, wrapped, font, spacing=7)
+        min_h = min(112 if bubble_w >= 260 else 96, max_bubble_h)
+        desired_h = self._clamp(text_h + pad_y * 2 + 4, min_h, max_bubble_h)
+        return desired_h, int(getattr(font, "size", min_size))
+
+    @staticmethod
+    def _rect_intersection_area(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> int:
+        left = max(a[0], b[0])
+        top = max(a[1], b[1])
+        right = min(a[2], b[2])
+        bottom = min(a[3], b[3])
+        return max(0, right - left) * max(0, bottom - top)
+
+    @staticmethod
+    def _inflate_rect(rect: tuple[int, int, int, int], amount: int) -> tuple[int, int, int, int]:
+        return rect[0] - amount, rect[1] - amount, rect[2] + amount, rect[3] + amount
+
+    def _smart_panel_composition(
+        self,
+        draw,
+        dialogue: str,
+        bubble_type: str,
+        body_family: str,
+        inner_x1: int,
+        inner_x2: int,
+        content_top: int,
+        content_bottom: int,
+        panel_w: int,
+        panel_h: int,
+        layout_style: str,
+        index: int,
+    ) -> dict[str, Any]:
+        content_w = max(80, inner_x2 - inner_x1)
+        content_h = max(80, content_bottom - content_top)
+        safe_gap = 22
+        candidates: list[dict[str, Any]] = []
+
+        char_options: list[tuple[str, tuple[int, int, int, int], int]] = []
+        if panel_w >= 560 or (layout_style == "cinematic_grid" and panel_w >= 500) or (layout_style == "action_splash" and panel_w >= 480):
+            char_w = self._clamp(int(panel_w * 0.24), 130, 270 if panel_w >= 900 else 210)
+            char_y = content_top + 18
+            char_h = max(72, content_bottom - char_y - 18)
+            char_options.append(("left", (inner_x1 + 22, char_y, inner_x1 + 22 + char_w, char_y + char_h), 90))
+            if panel_w >= 820:
+                char_x = inner_x2 - 22 - char_w
+                char_options.append(("right", (char_x, char_y, char_x + char_w, char_y + char_h), 58))
+        elif panel_w >= 340 and content_h >= 125:
+            char_w = self._clamp(int(panel_w * 0.28), 104, 132)
+            char_y = content_top + 10
+            char_h = max(72, content_bottom - char_y - 10)
+            char_options.append(("left", (inner_x1 + 8, char_y, inner_x1 + 8 + char_w, char_y + char_h), 86))
+            if content_w >= 390:
+                char_x = inner_x2 - 8 - char_w
+                char_options.append(("right", (char_x, char_y, char_x + char_w, char_y + char_h), 54))
+        else:
+            char_w = max(84, min(content_w - 30, 170))
+            bubble_budget_h = self._clamp(int(content_h * 0.48), 88, 140)
+            char_h = max(64, content_h - bubble_budget_h - 20)
+            char_x = inner_x1 + (content_w - char_w) // 2
+            char_y = content_bottom - char_h - 8
+            char_options.append(("bottom", (char_x, char_y, char_x + char_w, char_y + char_h), 72))
+
+        for char_side, char_rect, char_score in char_options:
+            char_safe = self._inflate_rect(char_rect, safe_gap)
+            zones = [
+                ("right", (char_rect[2] + safe_gap, content_top + 8, inner_x2 - 4, content_bottom - 8), 72 if char_side == "left" else 32),
+                ("left", (inner_x1 + 4, content_top + 8, char_rect[0] - safe_gap, content_bottom - 8), 72 if char_side == "right" else 32),
+                ("top", (inner_x1 + 4, content_top + 4, inner_x2 - 4, char_rect[1] - safe_gap), 44 if char_side == "bottom" else 18),
+            ]
+            for zone_name, zone, zone_score in zones:
+                zx1, zy1, zx2, zy2 = zone
+                zone_w = zx2 - zx1
+                zone_h = zy2 - zy1
+                if zone_w < 138 or zone_h < 86:
+                    continue
+                start_size = 42 if zone_w > 760 else 36 if zone_w > 430 else 30 if zone_w > 240 else 24
+                if zone_name == "top" and zone_w > 430:
+                    start_size = max(start_size, 34)
+                max_lines = 4 if zone_w > 520 and zone_h > 150 else 3
+                bubble_h, fitted_size = self._estimate_bubble_fit(
+                    draw,
+                    dialogue,
+                    zone_w,
+                    zone_h,
+                    bubble_type,
+                    body_family,
+                    start_size=start_size,
+                    min_size=16 if zone_w <= 260 else 18,
+                    max_lines=max_lines,
+                )
+                if zone_name in {"left", "right"}:
+                    speaker_y = char_rect[1] + int((char_rect[3] - char_rect[1]) * 0.36)
+                    by1 = self._clamp(speaker_y - bubble_h // 2, zy1, max(zy1, zy2 - bubble_h))
+                else:
+                    by1 = zy1
+                bubble_rect = (zx1, by1, zx2, by1 + bubble_h)
+                overlap = self._rect_intersection_area(char_safe, bubble_rect)
+                if overlap:
+                    continue
+                area_score = (zone_w * bubble_h) // 120
+                balance_penalty = abs(((bubble_rect[0] + bubble_rect[2]) // 2) - ((inner_x1 + inner_x2) // 2)) // 12
+                score = char_score + zone_score + area_score + fitted_size * 7 - balance_penalty
+                candidates.append(
+                    {
+                        "score": score,
+                        "character": char_rect,
+                        "bubble": bubble_rect,
+                        "zone": zone_name,
+                    }
+                )
+
+        if not candidates:
+            bubble_x1 = inner_x1 + 4
+            bubble_x2 = inner_x2 - 4
+            available_for_bubble = max(64, content_h - 92)
+            bubble_h, _font_size = self._estimate_bubble_fit(
+                draw,
+                dialogue,
+                bubble_x2 - bubble_x1,
+                self._clamp(int(content_h * 0.42), 64, min(130, available_for_bubble)),
+                bubble_type,
+                body_family,
+                start_size=28,
+                min_size=15,
+                max_lines=3,
+            )
+            bubble_rect = (bubble_x1, content_top + 4, bubble_x2, content_top + 4 + bubble_h)
+            char_w = max(72, min(content_w - 30, 150))
+            char_x = inner_x1 + (content_w - char_w) // 2
+            char_y = bubble_rect[3] + 12
+            char_h = max(60, content_bottom - char_y - 12)
+            char_rect = (char_x, char_y, char_x + char_w, char_y + char_h)
+        else:
+            best = max(candidates, key=lambda item: item["score"])
+            char_rect = best["character"]
+            bubble_rect = best["bubble"]
+
+        char_rect = (
+            max(inner_x1 + 4, char_rect[0]),
+            max(content_top + 4, char_rect[1]),
+            min(inner_x2 - 4, char_rect[2]),
+            min(content_bottom - 4, char_rect[3]),
+        )
+        bubble_rect = (
+            max(inner_x1 + 4, bubble_rect[0]),
+            max(content_top + 4, bubble_rect[1]),
+            min(inner_x2 - 4, bubble_rect[2]),
+            min(content_bottom - 4, bubble_rect[3]),
+        )
+        if self._rect_intersection_area(self._inflate_rect(char_rect, safe_gap), bubble_rect):
+            if char_rect[2] + safe_gap + 138 <= inner_x2 - 4:
+                bubble_rect = (char_rect[2] + safe_gap, bubble_rect[1], inner_x2 - 4, bubble_rect[3])
+            elif inner_x1 + 4 <= char_rect[0] - safe_gap - 138:
+                bubble_rect = (inner_x1 + 4, bubble_rect[1], char_rect[0] - safe_gap, bubble_rect[3])
+            else:
+                bubble_h = min(max(64, (content_bottom - content_top) // 3), 112)
+                bubble_rect = (inner_x1 + 4, content_top + 4, inner_x2 - 4, content_top + 4 + bubble_h)
+                char_w = max(72, min(content_w - 30, 150))
+                char_x = inner_x1 + (content_w - char_w) // 2
+                char_y = min(bubble_rect[3] + 12, content_bottom - 64)
+                char_h = max(60, content_bottom - char_y - 12)
+                char_rect = (char_x, char_y, char_x + char_w, min(content_bottom - 4, char_y + char_h))
+
+        head_x = (char_rect[0] + char_rect[2]) // 2
+        head_y = char_rect[1] + max(28, int((char_rect[3] - char_rect[1]) * 0.34))
+        bubble_cx = (bubble_rect[0] + bubble_rect[2]) // 2
+        bubble_cy = (bubble_rect[1] + bubble_rect[3]) // 2
+        if bubble_cx >= char_rect[2]:
+            tail_anchor = (char_rect[2] + 4, head_y)
+        elif bubble_cx <= char_rect[0]:
+            tail_anchor = (char_rect[0] - 4, head_y)
+        elif bubble_cy < char_rect[1]:
+            tail_anchor = (head_x, char_rect[1] - 4)
+        else:
+            tail_anchor = (head_x, char_rect[3] + 4)
+        return {
+            "character": (char_rect[0], char_rect[1], char_rect[2] - char_rect[0], char_rect[3] - char_rect[1]),
+            "bubble": bubble_rect,
+            "tail_anchor": tail_anchor,
+            "name_x": char_rect[0],
+            "name_y": min(content_bottom - 24, char_rect[3] - 24),
+        }
 
     def _draw_dataset_title_banner(
         self,
@@ -2772,33 +3894,40 @@ class CominoteEngine:
         title_family = str(style_record.get("title_font_family") or "display")
         body_family = str(style_record.get("body_font_family") or "sans")
         theme_label = str(style_record.get("label") or style_record.get("theme_profile") or "Comic Style")
-        self._gradient_rect(img, x, y, x + w, y + h, palette["title_bg"], palette["accent_alt"], vertical=False)
-        self._draw_page_halftone(draw, x + 6, y + 6, x + w - 6, y + h - 6, palette["title_stripe"], density=18, dot_r=2, opacity=0.1)
-        draw.rounded_rectangle((x, y, x + w, y + h), radius=28, outline="#111111", width=6)
-        draw.rounded_rectangle((x + 8, y + 8, x + w - 8, y + h - 8), radius=22, outline=palette["title_stripe"], width=3)
+        paper_fill = self._blend_hex(palette["page"], "#ffffff", 0.34)
+        soft_accent = self._blend_hex(palette["title_stripe"], "#ffffff", 0.18)
+        draw.rounded_rectangle((x + 5, y + 6, x + w + 5, y + h + 6), radius=16, fill=self._blend_hex("#111111", paper_fill, 0.88))
+        self._gradient_rect(img, x, y, x + w, y + h, paper_fill, "#ffffff", vertical=True)
+        draw.rounded_rectangle((x, y, x + w, y + h), radius=16, outline="#111111", width=4, fill=None)
+        draw.rectangle((x + 6, y + 6, x + w - 6, y + 24), fill=soft_accent)
+        draw.line((x + 6, y + 25, x + w - 6, y + 25), fill="#111111", width=2)
+        draw.rectangle((x + 18, y + 38, x + 150, y + h - 20), fill=self._blend_hex(palette["title_stripe"], "#ffffff", 0.42), outline="#111111", width=2)
+        draw.text((x + 84, y + 58), "COMIC", font=self._font(19, bold=True, family=body_family), fill="#111111", anchor="mm")
+        draw.text((x + 84, y + 86), "STUDY", font=self._font(19, bold=True, family=body_family), fill="#111111", anchor="mm")
 
-        badge_font = self._font(17, bold=True, family=body_family)
-        info_font = self._font(13, bold=True, family=body_family)
+        badge_font = self._font(18, bold=True, family=body_family)
+        info_font = self._font(12, bold=True, family=body_family)
         title_text, title_font = self._fit_text_block(
             draw,
             title.upper(),
-            w - 340,
-            58,
-            start_size=56,
-            min_size=26,
+            w - 220,
+            54,
+            start_size=50,
+            min_size=24,
             bold=True,
             family=title_family,
             max_lines=1,
         )
-        for dx, dy in [(4, 4), (2, 2)]:
-            draw.text((x + 28 + dx, y + 18 + dy), title_text, font=title_font, fill="#00000055")
-        draw.text((x + 28, y + 18), title_text, font=title_font, fill="#ffffff")
+        title_x = x + 176
+        title_y = y + 42
+        draw.text((title_x + 3, title_y + 3), title_text, font=title_font, fill=self._blend_hex("#111111", paper_fill, 0.72))
+        draw.text((title_x, title_y), title_text, font=title_font, fill="#111111")
 
         badge_text = f" {subject.upper()}  |  {theme_label.upper()} "
         badge_w = self._text_size(draw, badge_text, badge_font)[0] + 22
-        badge_y = y + 84
-        draw.rounded_rectangle((x + 26, badge_y, x + 26 + badge_w, badge_y + 30), radius=15, fill=palette["title_stripe"], outline="#111111", width=2)
-        draw.text((x + 38, badge_y + 6), badge_text, font=badge_font, fill="#111111")
+        badge_y = y + 94
+        draw.rounded_rectangle((title_x, badge_y, title_x + badge_w, badge_y + 31), radius=8, fill=soft_accent, outline="#111111", width=2)
+        draw.text((title_x + 12, badge_y + 6), badge_text, font=badge_font, fill="#111111")
         source_label = " + ".join("ARCHIVE HEROES" if source == "archive" else "COMINOTE DATASET" for source in cast_sources)
         info_text = source_label or "COMINOTE DATASET"
         info_text, info_font = self._fit_text_block(
@@ -2806,14 +3935,14 @@ class CominoteEngine:
             info_text,
             300,
             16,
-            start_size=13,
+            start_size=12,
             min_size=10,
             bold=True,
             family=body_family,
             max_lines=1,
         )
         info_width, _ = self._text_size(draw, info_text, info_font)
-        draw.text((x + w - info_width - 24, y + h - 24), info_text, font=info_font, fill="#ffffffcc")
+        draw.text((x + w - info_width - 22, y + h - 23), info_text, font=info_font, fill="#11111188")
 
     def _draw_dataset_panel(
         self,
@@ -2834,16 +3963,15 @@ class CominoteEngine:
         layout_style = str(style_record.get("layout_style") or theme_profile.get("layout_style") or "balanced_grid")
         title_family = str(style_record.get("title_font_family") or "display")
         body_family = str(style_record.get("body_font_family") or "sans")
-        effect_family = str(style_record.get("effect_font_family") or title_family)
         bubble_type = str((visual.get("bubble") or {}).get("type") or "normal").lower()
-        panel_radius = 12 if layout_style == "manga_cascade" else 20  # Consistent, polished corners
-        shadow_offset = 8  # Subtle shadow
-        # Refined shadow for depth
-        draw.rounded_rectangle((px + shadow_offset, py + shadow_offset, px + pw + shadow_offset, py + ph + shadow_offset), radius=panel_radius, fill="#11111122")
-        # Clean gradient background
-        self._gradient_rect(img, px, py, px + pw, py + ph, panel_theme["surface"], panel_theme["surface_alt"])
-        # Reduced halftone for cleaner look
-        self._draw_page_halftone(draw, px + 6, py + 6, px + pw - 6, py + ph - 6, panel_theme["accent_alt"], density=12, dot_r=1.5, opacity=0.05)
+        panel_radius = 8 if layout_style == "manga_cascade" else 10
+        shadow_offset = 6
+        panel_surface = self._blend_hex(panel_theme["surface"], "#ffffff", 0.28)
+        panel_surface_alt = self._blend_hex(panel_theme["surface_alt"], "#ffffff", 0.36)
+        panel_shadow = self._blend_hex("#111111", self._safe_hex(page_palette.get("page"), "#fff8ef"), 0.82)
+        draw.rounded_rectangle((px + shadow_offset, py + shadow_offset, px + pw + shadow_offset, py + ph + shadow_offset), radius=panel_radius, fill=panel_shadow)
+        self._gradient_rect(img, px, py, px + pw, py + ph, panel_surface, panel_surface_alt)
+        self._draw_page_halftone(draw, px + 8, py + 8, px + pw - 8, py + ph - 8, panel_theme["accent_alt"], density=22, dot_r=1.2, opacity=0.025)
         self._draw_dataset_background(
             draw,
             img,
@@ -2856,121 +3984,88 @@ class CominoteEngine:
             theme_profile,
         )
 
-        # Polished panel borders - consistent styling
-        draw.rounded_rectangle((px, py, px + pw, py + ph), radius=panel_radius, outline="#111111", width=6)
-        draw.rounded_rectangle((px + 6, py + 6, px + pw - 6, py + ph - 6), radius=max(6, panel_radius - 4), outline=panel_theme["accent"], width=2)
+        # Clean newspaper-strip panel borders.
+        draw.rounded_rectangle((px, py, px + pw, py + ph), radius=panel_radius, outline="#111111", width=4)
+        draw.rounded_rectangle((px + 5, py + 5, px + pw - 5, py + ph - 5), radius=max(4, panel_radius - 4), outline="#ffffffaa", width=1)
 
-        header_h = 48 if ph >= 260 else 40
-        # Smooth header gradient
-        self._gradient_rect(img, px + 4, py + 4, px + pw - 4, py + header_h, panel_theme["accent"], panel_theme["accent_alt"], vertical=False)
-        draw.rounded_rectangle((px + 4, py + 4, px + pw - 4, py + header_h), radius=max(6, panel_radius - 4), outline="#111111", width=2)
-        # Clean header separator
-        draw.line([(px + 6, py + header_h), (px + pw - 6, py + header_h)], fill="#111111", width=2)
+        header_h = 42 if ph >= 300 else 36
+        header_fill = self._blend_hex(panel_theme["accent"], "#ffffff", 0.18)
+        self._gradient_rect(img, px + 4, py + 4, px + pw - 4, py + header_h, header_fill, panel_theme["accent_alt"], vertical=False)
+        draw.rectangle((px + 4, py + 4, px + pw - 4, py + header_h), outline="#111111", width=1)
+        draw.line([(px + 4, py + header_h), (px + pw - 4, py + header_h)], fill="#111111", width=2)
 
-        badge_font = self._font(16, bold=True, family=body_family)
-        # Centered panel number badge
-        draw.ellipse((px + 18, py + 12, px + 50, py + 44), fill="#ffffff", outline="#111111", width=2)
-        draw.text((px + 34, py + 28), str(index + 1), font=badge_font, fill=panel_theme["accent"], anchor="mm")
-        inner_x1 = px + 14
-        inner_x2 = px + pw - 14
-        content_top = py + header_h + 10
-        caption_max_height = 110 if ph >= 320 else 92 if ph >= 260 else 72
-        caption_max_lines = 3 if ph >= 320 else 2 if ph >= 230 else 1
+        badge_font = self._font(14, bold=True, family=body_family)
+        badge_size = 26
+        badge_x = px + 14
+        badge_y = py + 8
+        draw.ellipse((badge_x, badge_y, badge_x + badge_size, badge_y + badge_size), fill="#ffffff", outline="#111111", width=2)
+        draw.text((badge_x + badge_size // 2, badge_y + badge_size // 2), str(index + 1), font=badge_font, fill="#111111", anchor="mm")
+        inner_x1 = px + 18
+        inner_x2 = px + pw - 18
+        content_top = py + header_h + 12
+        caption_max_height = 108 if ph >= 320 else 92 if ph >= 260 else 72
+        caption_max_lines = 2 if ph >= 230 else 1
         caption_width = max(90, pw - 64)
         caption_preview, caption_font = self._fit_text_block(
             draw,
             scene.caption,
             caption_width - 18,
             caption_max_height - 28,
-            start_size=14 if ph >= 260 else 13,
-            min_size=9,
+            start_size=20 if ph >= 260 else 18,
+            min_size=16,
             bold=True,
             family=body_family,
             spacing=4,
             max_lines=caption_max_lines,
         )
         _, caption_text_h = self._text_size(draw, caption_preview, caption_font, spacing=4)
-        caption_h = self._clamp(caption_text_h + 34, 52, caption_max_height)
+        caption_h = self._clamp(caption_text_h + 40, 60, caption_max_height)
         caption_y1 = py + ph - caption_h - 12
         content_bottom = caption_y1 - 14
-
-        sfx = visual.get("sfx") or {}
-        sfx_word = sfx.get("word", EFFECT_WORDS[index % len(EFFECT_WORDS)])
-        burst_palette = {
-            "accent": self._safe_hex(sfx.get("color_primary"), panel_theme["accent"]),
-            "accent_alt": self._safe_hex(sfx.get("color_secondary"), panel_theme["accent_alt"]),
-            "title_stripe": self._safe_hex(sfx.get("color_secondary"), page_palette["title_stripe"]),
-        }
-        effect_radius = self._clamp(header_h // 2 - 6, 12, 18 if ph < 260 else 22)
-        effect_cx = px + pw - effect_radius - 14
-        effect_cy = py + header_h // 2 + 1
 
         title_text, title_font = self._fit_text_block(
             draw,
             scene.title.upper(),
-            max(80, pw - (140 + effect_radius * 2)),
-            24,
-            start_size=22,
+            max(80, pw - 92),
+            21,
+            start_size=20,
             min_size=11,
             bold=True,
             family=title_family,
             max_lines=1,
         )
-        draw.text((px + 64, py + 14), title_text, font=title_font, fill="#ffffff")
-        self._draw_big_effect(draw, effect_cx, effect_cy, effect_radius, sfx_word, burst_palette, family=effect_family)
+        draw.text((px + 50, py + 11), title_text, font=title_font, fill="#ffffff")
 
-        wide_layout = pw >= 560 or (layout_style == "cinematic_grid" and pw >= 500) or (layout_style == "action_splash" and pw >= 480)
-        if wide_layout:
-            char_x = inner_x1 + 8
-            char_w = self._clamp(int(pw * 0.26), 140, 220)
-            gap = 16
-            bubble_x1 = char_x + char_w + gap
-            bubble_x2 = inner_x2 - 4
-            bubble_y1 = content_top + 6
-            bubble_max_height = self._clamp(int((content_bottom - content_top) * 0.48), 88, 160)
-            dialogue_preview, dialogue_font = self._fit_text_block(
-                draw,
-                scene.dialogue,
-                max(70, bubble_x2 - bubble_x1 - 32),
-                bubble_max_height - 28,
-                start_size=16 if layout_style == "action_splash" else 15,
-                min_size=10,
-                bold=bubble_type in {"shouting", "action_burst"},
-                family=body_family,
-                spacing=4,
-                max_lines=4 if bubble_max_height > 120 else 3,
-            )
-            _, dialogue_text_h = self._text_size(draw, dialogue_preview, dialogue_font, spacing=4)
-            bubble_height = self._clamp(dialogue_text_h + 32, 80, bubble_max_height)
-            bubble_y2 = bubble_y1 + bubble_height
-            char_y = content_top + 8
-            char_h = max(68, content_bottom - char_y - 6)
-            name_y1 = content_bottom - 24
-        else:
-            bubble_x1 = inner_x1 + 4
-            bubble_x2 = inner_x2 - 4
-            bubble_y1 = content_top + 4
-            bubble_max_height = self._clamp(int((content_bottom - content_top) * 0.4), 66, 118)
-            dialogue_preview, dialogue_font = self._fit_text_block(
-                draw,
-                scene.dialogue,
-                max(60, bubble_x2 - bubble_x1 - 32),
-                bubble_max_height - 24,
-                start_size=14 if ph >= 260 else 13,
-                min_size=9,
-                bold=bubble_type in {"shouting", "action_burst"},
-                family=body_family,
-                spacing=4,
-                max_lines=3 if ph >= 260 else 2,
-            )
-            _, dialogue_text_h = self._text_size(draw, dialogue_preview, dialogue_font, spacing=4)
-            bubble_height = self._clamp(dialogue_text_h + 28, 56, bubble_max_height)
-            bubble_y2 = bubble_y1 + bubble_height
-            char_x = inner_x1 + 8
-            char_w = max(88, pw - 48)
-            char_y = bubble_y2 + 12
-            char_h = max(46, content_bottom - char_y - 24)
-            name_y1 = content_bottom - 22
+        composition = self._smart_panel_composition(
+            draw,
+            scene.dialogue,
+            bubble_type,
+            body_family,
+            inner_x1,
+            inner_x2,
+            content_top,
+            content_bottom,
+            pw,
+            ph,
+            layout_style,
+            index,
+        )
+        char_x, char_y, char_w, char_h = composition["character"]
+        bubble_x1, bubble_y1, bubble_x2, bubble_y2 = composition["bubble"]
+        name_y1 = composition["name_y"]
+        name_x1 = composition["name_x"]
+        tail_anchor = composition["tail_anchor"]
+
+        self._draw_dataset_character(
+            draw,
+            char_x,
+            char_y,
+            char_w,
+            char_h,
+            visual,
+            style_record,
+            panel_theme,
+        )
 
         self._draw_dataset_speech_bubble(
             draw,
@@ -2982,17 +4077,7 @@ class CominoteEngine:
             scene.dialogue,
             panel_theme,
             body_family,
-        )
-
-        self._draw_dataset_character(
-            draw,
-            char_x,
-            char_y,
-            char_w,
-            char_h,
-            visual,
-            style_record,
-            panel_theme,
+            speaker_anchor=tail_anchor,
         )
 
         name_text = (visual.get("character") or {}).get("name") or scene.speaker
@@ -3008,9 +4093,9 @@ class CominoteEngine:
             max_lines=1,
         )
         badge_w = self._text_size(draw, badge_label, badge_font)[0] + 18
-        badge_x1 = inner_x1
+        badge_x1 = self._clamp(int(name_x1), inner_x1, max(inner_x1, inner_x2 - badge_w))
         badge_x2 = min(inner_x2, badge_x1 + badge_w)
-        draw.rounded_rectangle((badge_x1 + 2, name_y1 + 2, badge_x2 + 2, name_y1 + 20), radius=8, fill="#11111122")
+        draw.rounded_rectangle((badge_x1 + 2, name_y1 + 2, badge_x2 + 2, name_y1 + 20), radius=8, fill=self._blend_hex("#111111", panel_surface, 0.78))
         draw.rounded_rectangle((badge_x1, name_y1, badge_x2, name_y1 + 20), radius=8, fill=panel_theme["accent"], outline="#111111", width=2)
         draw.text((badge_x1 + 9, name_y1 + 2), badge_label, font=badge_font, fill="#ffffff")
 
@@ -3038,19 +4123,20 @@ class CominoteEngine:
         theme_profile: dict[str, Any] | None = None,
     ) -> None:
         bg_palette = background.get("palette") or {}
-        sky_top = self._safe_hex(bg_palette.get("primary"), panel_theme["surface"])
-        sky_bottom = self._safe_hex(bg_palette.get("secondary"), panel_theme["surface_alt"])
+        sky_top = self._blend_hex(self._safe_hex(bg_palette.get("primary"), panel_theme["surface"]), "#ffffff", 0.34)
+        sky_bottom = self._blend_hex(self._safe_hex(bg_palette.get("secondary"), panel_theme["surface_alt"]), "#ffffff", 0.42)
         accent = self._safe_hex(bg_palette.get("accent"), panel_theme["accent"])
-        floor = self._safe_hex(bg_palette.get("floor"), panel_theme["floor"])
+        floor = self._blend_hex(self._safe_hex(bg_palette.get("floor"), panel_theme["floor"]), "#ffffff", 0.28)
         theme_slug = str((theme_profile or {}).get("slug") or "").lower()
         horizon = py + int(ph * 0.72)
 
         self._gradient_rect(img, px + 4, py + 44, px + pw - 4, horizon, sky_top, sky_bottom)
-        self._gradient_rect(img, px + 4, horizon, px + pw - 4, py + ph - 40, floor, self._safe_hex(bg_palette.get("secondary"), panel_theme["surface_alt"]))
+        self._gradient_rect(img, px + 4, horizon, px + pw - 4, py + ph - 40, floor, sky_bottom)
 
-        for cloud_x in range(px + 30, px + pw - 40, 120):
-            draw.ellipse((cloud_x, py + 70, cloud_x + 70, py + 110), fill="#ffffff55")
-            draw.ellipse((cloud_x + 24, py + 56, cloud_x + 94, py + 106), fill="#ffffff55")
+        for cloud_x in range(px + 44, px + pw - 50, 190):
+            cloud_y = py + 66 + (cloud_x % 28)
+            draw.ellipse((cloud_x, cloud_y, cloud_x + 64, cloud_y + 34), fill="#ffffff5c")
+            draw.ellipse((cloud_x + 22, cloud_y - 12, cloud_x + 86, cloud_y + 30), fill="#ffffff5c")
 
         category = (background.get("category") or "school").lower()
         blob = f"{background.get('name', '')} {background.get('prompt_fragment', '')} {' '.join(background.get('tags') or [])}".lower()
@@ -3109,17 +4195,15 @@ class CominoteEngine:
                 draw.line([(board_x1 + 18, board_y1 + 52), (board_x2 - 18, board_y1 + 52)], fill="#ffffffaa", width=2)
 
         if theme_slug == "anime":
-            for petal_x in range(px + 34, px + pw - 24, 88):
+            for petal_x in range(px + 44, px + pw - 24, 150):
                 petal_y = py + 84 + (petal_x % 36)
-                draw.ellipse((petal_x, petal_y, petal_x + 10, petal_y + 6), fill="#ffd1ea", outline=accent)
-                draw.ellipse((petal_x + 6, petal_y + 2, petal_x + 16, petal_y + 8), fill="#ffe3f2", outline=accent)
-            draw.line([(px + 26, horizon - 48), (px + pw - 26, horizon - 84)], fill="#ffffff55", width=2)
+                draw.ellipse((petal_x, petal_y, petal_x + 10, petal_y + 6), fill="#ffd1ea88")
+                draw.ellipse((petal_x + 6, petal_y + 2, petal_x + 16, petal_y + 8), fill="#ffe3f288")
         elif theme_slug == "pixar":
-            for orb_x in range(px + 44, px + pw - 30, 110):
+            for orb_x in range(px + 44, px + pw - 30, 190):
                 orb_y = py + 90 + (orb_x % 28)
-                draw.ellipse((orb_x, orb_y, orb_x + 34, orb_y + 34), fill="#ffffff2f")
+                draw.ellipse((orb_x, orb_y, orb_x + 30, orb_y + 30), fill="#ffffff2f")
                 draw.ellipse((orb_x + 6, orb_y + 6, orb_x + 16, orb_y + 16), fill="#ffffff66")
-            draw.arc((px + 20, horizon - 30, px + 170, horizon + 42), start=180, end=360, fill="#ffffff88", width=4)
         elif theme_slug == "superhero":
             skyline_y = horizon - 20
             skyline = [
@@ -3127,28 +4211,206 @@ class CominoteEngine:
                 (px + 88, skyline_y - 28), (px + 88, skyline_y - 96), (px + 122, skyline_y - 96), (px + 122, skyline_y - 44),
                 (px + 156, skyline_y - 44), (px + 156, skyline_y - 124), (px + 192, skyline_y - 124), (px + 192, skyline_y),
             ]
-            draw.polygon(skyline + [(px + 18, skyline_y)], fill="#1a1a1a66")
-            for beam_x in range(px + 36, px + pw - 24, 140):
-                draw.line([(beam_x, py + 56), (beam_x + 90, horizon - 6)], fill="#ffffff2f", width=5)
+            draw.polygon(skyline + [(px + 18, skyline_y)], fill=self._blend_hex("#1a1a1a", sky_bottom, 0.62))
         elif theme_slug == "manga":
-            for offset in range(0, pw, 18):
-                draw.line([(px + offset, py + 50), (px + offset - 120, py + ph - 40)], fill="#11111118", width=2)
+            for offset in range(0, pw, 38):
+                draw.line([(px + offset, py + 50), (px + offset - 80, py + ph - 40)], fill="#1111110f", width=1)
             draw.rectangle((px + 12, py + 58, px + 78, py + 74), fill="#11111122")
             draw.rectangle((px + 12, py + 78, px + 128, py + 88), fill="#11111111")
         elif theme_slug == "cartoon_kids":
             bunting_y = py + 62
-            for bx in range(px + 28, px + pw - 28, 44):
+            for bx in range(px + 28, px + pw - 28, 86):
                 draw.line([(bx, bunting_y), (bx + 18, bunting_y + 14)], fill=accent, width=2)
                 draw.polygon([(bx + 16, bunting_y + 12), (bx + 34, bunting_y + 18), (bx + 22, bunting_y + 32)], fill="#ffffff55", outline=accent)
-            for star_x in range(px + 40, px + pw - 32, 120):
-                self._draw_starburst(draw, star_x, py + 110 + (star_x % 34), 8, "#fff2aa", accent, spikes=6)
         elif theme_slug == "fantasy":
             for arch_x in range(px + pw - 280, px + pw - 20, 86):
                 draw.arc((arch_x, py + 82, arch_x + 46, py + 158), start=180, end=360, fill="#ffffff88", width=3)
                 draw.line([(arch_x + 4, py + 120), (arch_x + 4, horizon)], fill="#ffffff66", width=2)
                 draw.line([(arch_x + 42, py + 120), (arch_x + 42, horizon)], fill="#ffffff66", width=2)
-            for sparkle_x in range(px + 54, px + pw - 40, 96):
-                self._draw_starburst(draw, sparkle_x, py + 96 + (sparkle_x % 26), 7, "#ffffff", accent, spikes=5)
+        elif theme_slug == "horror":
+            draw.ellipse((px + pw - 130, py + 60, px + pw - 58, py + 132), fill="#f8fafcbb", outline="#111827", width=2)
+            for fog_y in range(horizon - 76, horizon + 18, 42):
+                draw.arc((px + 22, fog_y, px + pw - 30, fog_y + 70), start=182, end=358, fill="#ffffff55", width=5)
+
+    def _visual_identity_blob(self, visual: dict[str, Any]) -> str:
+        character = visual.get("character") or {}
+        background = visual.get("background") or {}
+        profile = visual.get("theme_profile") or {}
+        parts = [
+            visual.get("theme_render_id", ""),
+            profile.get("slug", ""),
+            character.get("name", ""),
+            character.get("sub_type", ""),
+            character.get("render_variant", ""),
+            " ".join(character.get("tags") or []),
+            background.get("name", ""),
+            background.get("category", ""),
+            background.get("prompt_fragment", ""),
+            " ".join(background.get("tags") or []),
+            " ".join(visual.get("theme_comic_elements") or []),
+        ]
+        return " ".join(str(part) for part in parts if part).lower()
+
+    def _draw_premium_panel_atmosphere(
+        self,
+        draw,
+        img,
+        px: int,
+        py: int,
+        pw: int,
+        ph: int,
+        visual: dict[str, Any],
+        panel_theme: dict[str, str],
+        index: int,
+    ) -> None:
+        blob = self._visual_identity_blob(visual)
+        accent = panel_theme["accent"]
+        accent_alt = panel_theme["accent_alt"]
+        horizon = py + int(ph * 0.72)
+
+        if any(term in blob for term in ("pokemon", "pikachu", "electric", "lightning")):
+            for bolt_x in range(px + 72 + (index % 2) * 28, px + pw - 80, 160):
+                bolt = [
+                    (bolt_x, py + 70), (bolt_x + 28, py + 122), (bolt_x + 10, py + 122),
+                    (bolt_x + 42, py + 190), (bolt_x - 6, py + 112), (bolt_x + 14, py + 112),
+                ]
+                draw.polygon(bolt, fill="#fde047cc", outline="#111111")
+            for ring_x in range(px + 58, px + pw - 40, 180):
+                draw.ellipse((ring_x, horizon - 82, ring_x + 62, horizon - 20), outline=accent_alt, width=4)
+        elif any(term in blob for term in ("marvel", "spider", "web")):
+            web_cx, web_cy = px + pw - 68, py + 74
+            for ray in range(0, 360, 30):
+                ex = web_cx + int(150 * math.cos(math.radians(ray)))
+                ey = web_cy + int(110 * math.sin(math.radians(ray)))
+                draw.line([(web_cx, web_cy), (ex, ey)], fill="#ffffff80", width=2)
+            for radius in (28, 58, 88):
+                draw.ellipse((web_cx - radius, web_cy - radius, web_cx + radius, web_cy + radius), outline="#ffffff70", width=2)
+        elif any(term in blob for term in ("dc", "batman", "gotham", "night")):
+            signal_cx, signal_cy = px + pw - 112, py + 98
+            draw.ellipse((signal_cx - 52, signal_cy - 36, signal_cx + 52, signal_cy + 36), fill="#facc1544", outline="#111827", width=3)
+            draw.polygon(
+                [(signal_cx - 30, signal_cy), (signal_cx - 12, signal_cy - 10), (signal_cx, signal_cy - 2), (signal_cx + 12, signal_cy - 10), (signal_cx + 30, signal_cy), (signal_cx + 8, signal_cy + 8), (signal_cx, signal_cy + 2), (signal_cx - 8, signal_cy + 8)],
+                fill="#111827cc",
+            )
+        elif any(term in blob for term in ("naruto", "ninja", "shinobi", "leaf")):
+            for leaf_x in range(px + 40, px + pw - 20, 70):
+                leaf_y = py + 74 + ((leaf_x + index * 17) % 150)
+                draw.arc((leaf_x, leaf_y, leaf_x + 26, leaf_y + 18), 20, 310, fill=accent, width=3)
+            draw.line([(px + 26, py + ph - 82), (px + pw - 26, py + 80)], fill="#ffffff66", width=6)
+        elif any(term in blob for term in ("dragon", "goku", "saiyan", "energy", "kame")):
+            cx, cy = px + int(pw * 0.24), py + int(ph * 0.5)
+            for radius in (62, 96, 132):
+                draw.arc((cx - radius, cy - radius, cx + radius, cy + radius), 210, 330, fill="#fde047aa", width=5)
+            self._draw_speed_lines(draw, cx, cy, pw, ph, accent, count=18, opacity=0.08)
+        elif any(term in blob for term in ("space", "astronaut", "galaxy", "orbit", "station")):
+            for star_x in range(px + 42, px + pw - 34, 54):
+                star_y = py + 62 + ((star_x * 7 + index * 23) % max(60, ph - 130))
+                self._draw_starburst(draw, star_x, star_y, 6, "#ffffff", accent_alt, spikes=5)
+            draw.arc((px + pw - 240, py + 92, px + pw - 44, py + 230), 195, 350, fill="#ffffffaa", width=5)
+            draw.arc((px + pw - 270, py + 118, px + pw - 24, py + 260), 190, 342, fill=accent_alt, width=3)
+        elif any(term in blob for term in ("fantasy", "magic", "dragon", "castle", "wizard", "quest")):
+            for rune_x in range(px + 52, px + pw - 34, 116):
+                rune_y = py + 72 + ((rune_x + index * 19) % 120)
+                draw.text((rune_x, rune_y), "✦", font=self._font(28, bold=True, family="display"), fill="#ffffffcc")
+                draw.ellipse((rune_x - 12, rune_y - 10, rune_x + 34, rune_y + 36), outline=accent_alt, width=3)
+            draw.polygon([(px + pw - 198, horizon), (px + pw - 124, horizon - 86), (px + pw - 52, horizon)], fill="#1111112f")
+        elif any(term in blob for term in ("horror", "mystery", "shadow", "fog", "hawkins", "upside")):
+            for fog_x in range(px + 24, px + pw - 20, 120):
+                draw.arc((fog_x, horizon - 80, fog_x + 180, horizon - 4), 180, 360, fill="#ffffff70", width=5)
+            draw.rectangle((px + 4, py + 48, px + pw - 4, py + ph - 36), outline="#11182799", width=5)
+        else:
+            for sticker_x in range(px + 50, px + pw - 40, 140):
+                sticker_y = py + 78 + ((sticker_x + index * 31) % 110)
+                self._draw_starburst(draw, sticker_x, sticker_y, 8, "#fff8cf", accent, spikes=6)
+
+    def _draw_character_motion_layer(
+        self,
+        draw,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        visual: dict[str, Any],
+        panel_theme: dict[str, str],
+        index: int,
+    ) -> None:
+        blob = self._visual_identity_blob(visual)
+        cx = x + w // 2
+        cy = y + max(34, h // 2)
+        accent = panel_theme["accent"]
+        accent_alt = panel_theme["accent_alt"]
+        if any(term in blob for term in ("pokemon", "pikachu", "electric", "lightning")):
+            for angle in (20, 76, 128, 205, 292):
+                ex = cx + int(w * 0.48 * math.cos(math.radians(angle)))
+                ey = cy + int(h * 0.42 * math.sin(math.radians(angle)))
+                draw.line([(cx, cy), (ex, ey)], fill="#fde047aa", width=4)
+        elif any(term in blob for term in ("superhero", "marvel", "dc", "hero", "gotham")):
+            for radius in (max(22, w // 3), max(34, w // 2)):
+                draw.arc((cx - radius, cy - radius, cx + radius, cy + radius), 215, 330, fill=accent_alt, width=5)
+        elif any(term in blob for term in ("anime", "naruto", "goku", "saiyan", "ninja")):
+            for offset in range(-36, 48, 24):
+                draw.line([(cx - w // 2, cy + offset), (cx + w // 2, cy + offset - 46)], fill=f"{accent}88", width=4)
+        elif any(term in blob for term in ("space", "astronaut", "alien")):
+            draw.arc((cx - w // 2, cy - h // 3, cx + w // 2, cy + h // 3), 15, 330, fill=accent_alt, width=4)
+        elif any(term in blob for term in ("fantasy", "magic", "wizard", "quest")):
+            for radius in (18, 34):
+                self._draw_starburst(draw, cx + radius, cy - radius, 7, "#ffffff", accent_alt, spikes=5)
+        elif any(term in blob for term in ("horror", "mystery", "shadow")):
+            draw.ellipse((cx - w // 2, cy + h // 4, cx + w // 2, cy + h // 2), fill="#11182733")
+
+    def _bubble_tail_points(
+        self,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        speaker_anchor: tuple[int, int] | None,
+    ) -> list[tuple[int, int]]:
+        if speaker_anchor is None:
+            speaker_anchor = (x1 + 32, y2 + 18)
+        sx, sy = speaker_anchor
+        if sx < x1:
+            base_y = self._clamp(sy, y1 + 24, y2 - 24)
+            tip_x = min(x1 - 10, max(sx + 22, x1 - 76))
+            return [(x1 + 2, base_y - 13), (x1 + 2, base_y + 13), (tip_x, sy)]
+        if sx > x2:
+            base_y = self._clamp(sy, y1 + 24, y2 - 24)
+            tip_x = max(x2 + 10, min(sx - 22, x2 + 76))
+            return [(x2 - 2, base_y - 13), (x2 - 2, base_y + 13), (tip_x, sy)]
+        if sy < y1:
+            base_x = self._clamp(sx, x1 + 28, x2 - 28)
+            tip_y = min(y1 - 10, max(sy + 20, y1 - 58))
+            return [(base_x - 14, y1 + 2), (base_x + 14, y1 + 2), (sx, tip_y)]
+        base_x = self._clamp(sx, x1 + 28, x2 - 28)
+        tip_y = max(y2 + 10, min(sy - 20, y2 + 58))
+        return [(base_x - 15, y2 - 2), (base_x + 15, y2 - 2), (sx, tip_y)]
+
+    def _draw_bubble_tail(
+        self,
+        draw,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        speaker_anchor: tuple[int, int] | None,
+        fill: str,
+        shadow_fill: str,
+        *,
+        thought: bool = False,
+    ) -> None:
+        points = self._bubble_tail_points(x1, y1, x2, y2, speaker_anchor)
+        if thought:
+            tip_x, tip_y = points[2]
+            edge_x = (points[0][0] + points[1][0]) // 2
+            edge_y = (points[0][1] + points[1][1]) // 2
+            for step, radius in ((0.38, 7), (0.68, 5)):
+                cx = int(edge_x + (tip_x - edge_x) * step)
+                cy = int(edge_y + (tip_y - edge_y) * step)
+                draw.ellipse((cx - radius + 2, cy - radius + 3, cx + radius + 2, cy + radius + 3), fill=shadow_fill)
+                draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=fill, outline="#111111", width=2)
+            return
+        draw.polygon([(x + 3, y + 4) for x, y in points], fill=shadow_fill)
+        draw.polygon(points, fill=fill, outline="#111111", width=2)
 
     def _draw_dataset_speech_bubble(
         self,
@@ -3161,61 +4423,70 @@ class CominoteEngine:
         text: str,
         panel_theme: dict[str, str],
         body_family: str = "sans",
+        speaker_anchor: tuple[int, int] | None = None,
     ) -> None:
         if x2 <= x1 or y2 <= y1:
             return
         bubble_type = (bubble.get("type") or "normal").lower()
+        if bubble_type == "action_burst":
+            bubble_type = "normal"
         fill = self._safe_hex(bubble.get("fill"), panel_theme["bubble"])
-        outline_width = 3 if bubble_type in {"shouting", "action_burst"} else 2  # Consistent, refined borders
-        if bubble_type in {"shouting", "action_burst"}:
-            cx = (x1 + x2) // 2
-            cy = (y1 + y2) // 2
-            rx = (x2 - x1) // 2
-            ry = (y2 - y1) // 2
-            points = []
-            for step in range(16):
-                angle = math.radians(step * (360 / 16) - 90)
-                radius_x = rx if step % 2 == 0 else int(rx * 0.78)
-                radius_y = ry if step % 2 == 0 else int(ry * 0.78)
-                points.append((cx + int(radius_x * math.cos(angle)), cy + int(radius_y * math.sin(angle))))
-            draw.polygon(points, fill=fill, outline="#111111", width=outline_width)
-        elif bubble_type == "manga_box":
-            draw.rounded_rectangle((x1, y1, x2, y2), radius=8, fill=fill, outline="#111111", width=outline_width)
-            draw.line([(x1 + 20, y2), (x1 + 40, y2 + 16)], fill="#111111", width=3)
-            draw.line([(x1 + 40, y2 + 16), (x1 + 62, y2)], fill="#111111", width=3)
-        elif bubble_type == "thought_bubble":
-            draw.ellipse((x1, y1, x2, y2), fill=fill, outline="#111111", width=outline_width)
-            draw.ellipse((x1 + 18, y2 + 6, x1 + 36, y2 + 24), fill=fill, outline="#111111", width=2)
-            draw.ellipse((x1 + 36, y2 + 22, x1 + 48, y2 + 34), fill=fill, outline="#111111", width=2)
-        else:
-            radius = 24 if bubble_type == "pixar_round" else 18  # Consistent rounded corners
-            draw.rounded_rectangle((x1, y1, x2, y2), radius=radius, fill=fill, outline="#111111", width=outline_width)
-            # Pointer tail
-            tail_points = [(x1 + 32, y2 - 2), (x1 + 64, y2 - 2), (x1 + 20, y2 + 30)]
-            draw.polygon(tail_points, fill=fill, outline="#111111", width=1)
-
-        # Consistent text padding and sizing
+        fill = self._blend_hex(fill, "#ffffff", 0.18)
+        shadow_fill = self._blend_hex("#111111", fill, 0.84)
+        outline_width = 4 if bubble_type == "shouting" else 3
         bubble_w = x2 - x1
         bubble_h = y2 - y1
-        max_text_h = max(20, bubble_h - 32)
-        start_size = 16 if bubble_w > 300 else 14 if bubble_w > 180 else 11
+        if bubble_type == "shouting":
+            radius = 16
+            draw.rounded_rectangle((x1 + 4, y1 + 4, x2 + 4, y2 + 4), radius=radius, fill=shadow_fill)
+            draw.rounded_rectangle((x1, y1, x2, y2), radius=radius, fill=fill, outline="#111111", width=outline_width)
+            self._draw_bubble_tail(draw, x1, y1, x2, y2, speaker_anchor, fill, shadow_fill)
+        elif bubble_type == "manga_box":
+            draw.rounded_rectangle((x1 + 4, y1 + 4, x2 + 4, y2 + 4), radius=8, fill=shadow_fill)
+            draw.rounded_rectangle((x1, y1, x2, y2), radius=10, fill=fill, outline="#111111", width=outline_width)
+            self._draw_bubble_tail(draw, x1, y1, x2, y2, speaker_anchor, fill, shadow_fill)
+        elif bubble_type == "thought_bubble":
+            draw.ellipse((x1 + 4, y1 + 4, x2 + 4, y2 + 4), fill=shadow_fill)
+            draw.ellipse((x1, y1, x2, y2), fill=fill, outline="#111111", width=outline_width)
+            self._draw_bubble_tail(draw, x1, y1, x2, y2, speaker_anchor, fill, shadow_fill, thought=True)
+        else:
+            radius = 24 if bubble_type == "pixar_round" else 18
+            draw.rounded_rectangle((x1 + 4, y1 + 4, x2 + 4, y2 + 4), radius=radius, fill=shadow_fill)
+            draw.rounded_rectangle((x1, y1, x2, y2), radius=radius, fill=fill, outline="#111111", width=outline_width)
+            draw.rounded_rectangle((x1 + 8, y1 + 8, x2 - 8, y1 + min(34, (y2 - y1) // 3)), radius=max(10, radius - 8), fill="#ffffff55")
+            self._draw_bubble_tail(draw, x1, y1, x2, y2, speaker_anchor, fill, shadow_fill)
+
+        if bubble_type in {"shouting", "action_burst"}:
+            text_pad_x = max(72, int(bubble_w * 0.24)) if bubble_type == "action_burst" else 72 if bubble_w > 360 else 54 if bubble_w > 220 else 36
+            text_pad_y = 34 if bubble_h > 130 else 24
+        else:
+            text_pad_x = 50 if bubble_w > 360 else 40 if bubble_w > 230 else 28
+            text_pad_y = 24 if bubble_h > 118 else 18
+        max_text_h = max(30, bubble_h - text_pad_y * 2)
+        if bubble_type == "action_burst":
+            start_size = 34 if bubble_w > 390 else 30 if bubble_w > 260 else 24
+        else:
+            start_size = 42 if bubble_w > 390 else 36 if bubble_w > 260 else 30 if bubble_w > 170 else 22
+        min_size = 22 if bubble_w > 390 else 18 if bubble_w > 260 else 15
         wrapped, font = self._fit_text_block(
             draw,
             text,
-            max(40, bubble_w - 32),
+            max(52, bubble_w - text_pad_x * 2),
             max_text_h,
             start_size=start_size,
-            min_size=9,
+            min_size=min_size,
             bold=bubble_type in {"shouting", "action_burst"},
             family=body_family,
-            spacing=4,
-            max_lines=4 if bubble_h > 96 else 3 if bubble_h > 72 else 2,
+            spacing=7,
+            max_lines=4 if bubble_h > 150 else 3,
         )
-        text_w, text_h = self._text_size(draw, wrapped, font, spacing=4)
-        # Centered text with uniform padding
-        text_x = x1 + max(16, (bubble_w - text_w) // 2)
-        text_y = y1 + max(12, (bubble_h - text_h) // 2)
-        draw.multiline_text((text_x, text_y), wrapped, font=font, fill="#111111", spacing=4)
+        _text_w, text_h = self._text_size(draw, wrapped, font, spacing=7)
+        text_y = y1 + max(text_pad_y, (bubble_h - text_h) // 2)
+        for line in wrapped.splitlines() or [""]:
+            line_w, line_h = self._text_size(draw, line, font)
+            text_x = x1 + max(text_pad_x, (bubble_w - line_w) // 2)
+            draw.text((text_x, text_y), line, font=font, fill="#111111")
+            text_y += line_h + 7
 
     def _draw_dataset_caption(
         self,
@@ -3228,29 +4499,26 @@ class CominoteEngine:
         panel_theme: dict[str, str],
         body_family: str = "sans",
     ) -> None:
-        # Subtle shadow for depth
-        draw.rounded_rectangle((x1 + 3, y1 + 3, x2 + 3, y2 + 3), radius=12, fill="#11111118")
-        # Polished caption box
-        draw.rounded_rectangle((x1, y1, x2, y2), radius=12, fill=panel_theme["caption"], outline="#111111", width=2)
-        # Clean accent stripe
-        draw.rectangle((x1, y1, x1 + 8, y2), fill=panel_theme["accent"])
-        # Consistent narrator label
-        label_font = self._font(10, bold=True, family=body_family)
-        draw.text((x1 + 14, y1 + 5), "NARRATOR", font=label_font, fill=panel_theme["caption_text"])
-        # Properly sized and padded caption text
+        caption_fill = self._blend_hex(panel_theme["caption"], "#ffffff", 0.38)
+        caption_shadow = self._blend_hex("#111111", caption_fill, 0.84)
+        draw.rounded_rectangle((x1 + 3, y1 + 4, x2 + 3, y2 + 4), radius=10, fill=caption_shadow)
+        draw.rounded_rectangle((x1, y1, x2, y2), radius=10, fill=caption_fill, outline="#111111", width=2)
+        draw.rectangle((x1, y1 + 3, x1 + 10, y2 - 3), fill=panel_theme["accent"])
+        label_font = self._font(12, bold=True, family=body_family)
+        draw.text((x1 + 18, y1 + 6), "STUDY NOTE", font=label_font, fill=panel_theme["caption_text"])
         wrapped, cap_font = self._fit_text_block(
             draw,
             caption,
-            max(60, x2 - x1 - 28),
-            max(18, y2 - y1 - 30),
-            start_size=12,
-            min_size=9,
+            max(66, x2 - x1 - 38),
+            max(22, y2 - y1 - 32),
+            start_size=17,
+            min_size=15,
             bold=True,
             family=body_family,
-            spacing=3,
-            max_lines=3 if (y2 - y1) >= 74 else 2 if (y2 - y1) >= 54 else 1,
+            spacing=5,
+            max_lines=2 if (y2 - y1) >= 58 else 1,
         )
-        draw.multiline_text((x1 + 14, y1 + 19), wrapped, font=cap_font, fill="#111111", spacing=3)
+        draw.multiline_text((x1 + 18, y1 + 23), wrapped, font=cap_font, fill="#111111", spacing=5)
 
     @staticmethod
     def _mono_hex(hex_color: str, contrast: float = 0.0) -> str:
@@ -3269,7 +4537,83 @@ class CominoteEngine:
         return hair, skin, outfit, outfit_alt, eye
 
     def _draw_character_prop(self, draw, cx: int, top_y: int, descriptor: str, theme_slug: str, outfit_alt: str, scale: float) -> None:
-        if "book" in descriptor or "scroll" in descriptor or theme_slug == "fantasy":
+        if "astronaut" in descriptor:
+            draw.ellipse(
+                (cx - int(42 * scale), top_y - int(76 * scale), cx + int(42 * scale), top_y + int(10 * scale)),
+                outline="#ffffff",
+                width=max(3, int(5 * scale)),
+            )
+            draw.arc(
+                (cx - int(34 * scale), top_y - int(62 * scale), cx + int(34 * scale), top_y),
+                start=190,
+                end=350,
+                fill=outfit_alt,
+                width=max(2, int(4 * scale)),
+            )
+        elif "ninja-hero" in descriptor:
+            draw.rounded_rectangle(
+                (cx - int(38 * scale), top_y - int(70 * scale), cx + int(38 * scale), top_y - int(56 * scale)),
+                radius=int(7 * scale),
+                fill=outfit_alt,
+                outline="#111111",
+                width=2,
+            )
+        elif "web-hero" in descriptor:
+            draw.line(
+                [(cx + int(32 * scale), top_y + int(2 * scale)), (cx + int(78 * scale), top_y - int(44 * scale))],
+                fill="#ffffff",
+                width=max(2, int(4 * scale)),
+            )
+        elif "tech-armor" in descriptor:
+            draw.ellipse(
+                (cx - int(12 * scale), top_y + int(28 * scale), cx + int(12 * scale), top_y + int(52 * scale)),
+                fill=outfit_alt,
+                outline="#ffffff",
+                width=2,
+            )
+        elif "dark-knight" in descriptor:
+            draw.polygon(
+                [
+                    (cx - int(34 * scale), top_y - int(48 * scale)),
+                    (cx - int(20 * scale), top_y - int(84 * scale)),
+                    (cx - int(6 * scale), top_y - int(48 * scale)),
+                ],
+                fill="#111111",
+                outline="#111111",
+            )
+            draw.polygon(
+                [
+                    (cx + int(6 * scale), top_y - int(48 * scale)),
+                    (cx + int(20 * scale), top_y - int(84 * scale)),
+                    (cx + int(34 * scale), top_y - int(48 * scale)),
+                ],
+                fill="#111111",
+                outline="#111111",
+            )
+        elif "saiyan-warrior" in descriptor:
+            for radius in (46, 62):
+                draw.arc(
+                    (cx - int(radius * scale), top_y - int(70 * scale), cx + int(radius * scale), top_y + int(90 * scale)),
+                    start=205,
+                    end=335,
+                    fill=outfit_alt,
+                    width=max(2, int(3 * scale)),
+                )
+        elif "pirate" in descriptor:
+            draw.ellipse(
+                (cx - int(42 * scale), top_y - int(68 * scale), cx + int(42 * scale), top_y - int(44 * scale)),
+                fill=outfit_alt,
+                outline="#111111",
+                width=2,
+            )
+            draw.rounded_rectangle(
+                (cx - int(30 * scale), top_y - int(58 * scale), cx + int(30 * scale), top_y - int(36 * scale)),
+                radius=int(8 * scale),
+                fill=outfit_alt,
+                outline="#111111",
+                width=2,
+            )
+        elif "book" in descriptor or "scroll" in descriptor or theme_slug == "fantasy":
             fill = "#fff3cf" if theme_slug != "manga" else "#f5f5f5"
             draw.rounded_rectangle((cx + int(18 * scale), top_y + int(28 * scale), cx + int(52 * scale), top_y + int(52 * scale)), radius=int(7 * scale), fill=fill, outline="#111111", width=2)
             draw.line([(cx + int(35 * scale), top_y + int(30 * scale)), (cx + int(35 * scale), top_y + int(50 * scale))], fill="#111111", width=1)
@@ -3307,7 +4651,7 @@ class CominoteEngine:
         eye: str,
         panel_theme: dict[str, str],
     ) -> None:
-        scale = max(0.54, min(w / 190, max(h, 1) / 190))
+        scale = max(0.40, min(w / 190, max(h, 1) / 210))
         cx = x + w // 2
         ground_y = y + h + 2
         head_r = int(32 * scale)
@@ -3367,7 +4711,7 @@ class CominoteEngine:
         panel_theme: dict[str, str],
         category: str,
     ) -> None:
-        scale = max(0.56, min(w / 180, max(h, 1) / 180))
+        scale = max(0.40, min(w / 180, max(h, 1) / 205))
         cx = x + w // 2
         ground_y = y + h + 2
         if category == "mascot":
@@ -3425,7 +4769,7 @@ class CominoteEngine:
         eye: str,
         panel_theme: dict[str, str],
     ) -> None:
-        scale = max(0.56, min(w / 176, max(h, 1) / 176))
+        scale = max(0.46, min(w / 190, max(h, 1) / 230))
         cx = x + w // 2
         ground_y = y + h + 2
         head_r = int(34 * scale)
@@ -3488,7 +4832,7 @@ class CominoteEngine:
         outfit = self._mono_hex(outfit, -36)
         outfit_alt = self._mono_hex(outfit_alt, 16)
         eye = self._mono_hex(eye, -60)
-        scale = max(0.52, min(w / 188, max(h, 1) / 188))
+        scale = max(0.40, min(w / 188, max(h, 1) / 210))
         cx = x + w // 2
         ground_y = y + h + 2
         head_r = int(31 * scale)
@@ -3530,7 +4874,7 @@ class CominoteEngine:
         eye: str,
         panel_theme: dict[str, str],
     ) -> None:
-        scale = max(0.58, min(w / 170, max(h, 1) / 170))
+        scale = max(0.42, min(w / 170, max(h, 1) / 190))
         cx = x + w // 2
         ground_y = y + h + 2
         head_r = int(40 * scale)
@@ -3572,7 +4916,7 @@ class CominoteEngine:
         eye: str,
         panel_theme: dict[str, str],
     ) -> None:
-        scale = max(0.54, min(w / 186, max(h, 1) / 186))
+        scale = max(0.40, min(w / 186, max(h, 1) / 205))
         cx = x + w // 2
         ground_y = y + h + 2
         head_r = int(33 * scale)
@@ -3615,7 +4959,11 @@ class CominoteEngine:
         theme_profile = visual.get("theme_profile") or {}
         theme_slug = str(theme_profile.get("slug") or "").lower()
         category = str(character.get("category") or "").lower()
+        variant = str(character.get("render_variant") or character.get("sub_type") or "").lower()
         is_archive = character.get("source") == "archive"
+        if category == "mascot" or variant in {"electric-mascot", "lion", "alien", "mythic-monkey", "ai-spirit"}:
+            self._draw_theme_mascot_character(draw, x, y, w, h, visual, panel_theme)
+            return
         if "robot" in descriptor:
             self._draw_robot_character(draw, x, y, w, h, visual, panel_theme)
             return
@@ -3634,8 +4982,79 @@ class CominoteEngine:
             self._draw_manga_character(draw, x, y, w, h, descriptor, pose_name, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme)
         elif theme_slug == "fantasy":
             self._draw_fantasy_character(draw, x, y, w, h, descriptor, pose_name, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme)
+        elif theme_slug == "horror":
+            self._draw_manga_character(draw, x, y, w, h, f"horror mystery {descriptor}", pose_name, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme)
         else:
             self._draw_kids_character(draw, x, y, w, h, descriptor, pose_name, expr, mouth, hair, skin, outfit, outfit_alt, eye, panel_theme)
+
+    def _draw_theme_mascot_character(self, draw, x: int, y: int, w: int, h: int, visual: dict[str, Any], panel_theme: dict[str, str]) -> None:
+        character = visual.get("character") or {}
+        variant = str(character.get("render_variant") or character.get("sub_type") or "").lower()
+        hair, skin, outfit, outfit_alt, eye = self._character_palette_values(character, panel_theme)
+        emotion_name = (visual.get("emotion") or {}).get("name", "happy")
+        expr, mouth = self._emotion_face(emotion_name)
+        scale = max(0.40, min(w / 180, max(h, 1) / 205))
+        cx = x + w // 2
+        ground_y = y + h + 2
+        draw.ellipse((cx - int(48 * scale), ground_y - 8, cx + int(48 * scale), ground_y + 10), fill="#0000002a")
+
+        if variant == "electric-mascot":
+            tail = [
+                (cx + int(44 * scale), ground_y - int(92 * scale)),
+                (cx + int(82 * scale), ground_y - int(132 * scale)),
+                (cx + int(66 * scale), ground_y - int(132 * scale)),
+                (cx + int(98 * scale), ground_y - int(176 * scale)),
+                (cx + int(58 * scale), ground_y - int(142 * scale)),
+                (cx + int(72 * scale), ground_y - int(142 * scale)),
+                (cx + int(36 * scale), ground_y - int(106 * scale)),
+            ]
+            draw.polygon(tail, fill=outfit_alt, outline="#111111")
+            draw.ellipse((cx - int(40 * scale), ground_y - int(106 * scale), cx + int(40 * scale), ground_y - int(20 * scale)), fill=outfit, outline="#111111", width=3)
+            draw.ellipse((cx - int(46 * scale), ground_y - int(174 * scale), cx + int(46 * scale), ground_y - int(84 * scale)), fill=outfit, outline="#111111", width=3)
+            draw.polygon([(cx - int(32 * scale), ground_y - int(160 * scale)), (cx - int(48 * scale), ground_y - int(224 * scale)), (cx - int(10 * scale), ground_y - int(176 * scale))], fill=outfit, outline="#111111")
+            draw.polygon([(cx + int(32 * scale), ground_y - int(160 * scale)), (cx + int(48 * scale), ground_y - int(224 * scale)), (cx + int(10 * scale), ground_y - int(176 * scale))], fill=outfit, outline="#111111")
+            draw.ellipse((cx - int(30 * scale), ground_y - int(130 * scale), cx - int(14 * scale), ground_y - int(112 * scale)), fill=eye)
+            draw.ellipse((cx + int(14 * scale), ground_y - int(130 * scale), cx + int(30 * scale), ground_y - int(112 * scale)), fill=eye)
+            draw.ellipse((cx - int(42 * scale), ground_y - int(108 * scale), cx - int(22 * scale), ground_y - int(88 * scale)), fill="#ef4444", outline="#111111", width=2)
+            draw.ellipse((cx + int(22 * scale), ground_y - int(108 * scale), cx + int(42 * scale), ground_y - int(88 * scale)), fill="#ef4444", outline="#111111", width=2)
+            self._draw_comic_mouth(draw, cx, ground_y - int(102 * scale), mouth, max(0.7, scale * 0.75))
+            return
+
+        if variant == "lion":
+            draw.ellipse((cx - int(60 * scale), ground_y - int(172 * scale), cx + int(60 * scale), ground_y - int(52 * scale)), fill=hair, outline="#111111", width=3)
+            draw.ellipse((cx - int(42 * scale), ground_y - int(154 * scale), cx + int(42 * scale), ground_y - int(70 * scale)), fill=skin, outline="#111111", width=3)
+            draw.ellipse((cx - int(44 * scale), ground_y - int(84 * scale), cx + int(44 * scale), ground_y), fill=outfit, outline="#111111", width=3)
+            draw.ellipse((cx - int(24 * scale), ground_y - int(126 * scale), cx - int(10 * scale), ground_y - int(110 * scale)), fill=eye)
+            draw.ellipse((cx + int(10 * scale), ground_y - int(126 * scale), cx + int(24 * scale), ground_y - int(110 * scale)), fill=eye)
+            draw.polygon([(cx, ground_y - int(104 * scale)), (cx - int(8 * scale), ground_y - int(92 * scale)), (cx + int(8 * scale), ground_y - int(92 * scale))], fill="#111111")
+            self._draw_comic_mouth(draw, cx, ground_y - int(86 * scale), mouth, max(0.7, scale * 0.72))
+            return
+
+        if variant == "alien":
+            draw.line((cx - int(26 * scale), ground_y - int(160 * scale), cx - int(42 * scale), ground_y - int(202 * scale)), fill="#111111", width=3)
+            draw.line((cx + int(26 * scale), ground_y - int(160 * scale), cx + int(42 * scale), ground_y - int(202 * scale)), fill="#111111", width=3)
+            draw.ellipse((cx - int(50 * scale), ground_y - int(164 * scale), cx + int(50 * scale), ground_y - int(64 * scale)), fill=skin, outline="#111111", width=3)
+            draw.rounded_rectangle((cx - int(42 * scale), ground_y - int(80 * scale), cx + int(42 * scale), ground_y), radius=int(28 * scale), fill=outfit, outline="#111111", width=3)
+            draw.ellipse((cx - int(30 * scale), ground_y - int(128 * scale), cx - int(8 * scale), ground_y - int(104 * scale)), fill="#ffffff", outline="#111111", width=2)
+            draw.ellipse((cx + int(8 * scale), ground_y - int(128 * scale), cx + int(30 * scale), ground_y - int(104 * scale)), fill="#ffffff", outline="#111111", width=2)
+            draw.ellipse((cx - int(22 * scale), ground_y - int(120 * scale), cx - int(14 * scale), ground_y - int(112 * scale)), fill=eye)
+            draw.ellipse((cx + int(14 * scale), ground_y - int(120 * scale), cx + int(22 * scale), ground_y - int(112 * scale)), fill=eye)
+            self._draw_comic_mouth(draw, cx, ground_y - int(92 * scale), mouth, max(0.66, scale * 0.68))
+            return
+
+        if variant == "ai-spirit":
+            draw.ellipse((cx - int(54 * scale), ground_y - int(152 * scale), cx + int(54 * scale), ground_y - int(44 * scale)), fill=f"{outfit}88", outline=outfit_alt, width=3)
+            draw.ellipse((cx - int(32 * scale), ground_y - int(126 * scale), cx - int(14 * scale), ground_y - int(108 * scale)), fill="#ffffff")
+            draw.ellipse((cx + int(14 * scale), ground_y - int(126 * scale), cx + int(32 * scale), ground_y - int(108 * scale)), fill="#ffffff")
+            draw.ellipse((cx - int(25 * scale), ground_y - int(120 * scale), cx - int(20 * scale), ground_y - int(115 * scale)), fill=eye)
+            draw.ellipse((cx + int(20 * scale), ground_y - int(120 * scale), cx + int(25 * scale), ground_y - int(115 * scale)), fill=eye)
+            self._draw_comic_mouth(draw, cx, ground_y - int(96 * scale), mouth, max(0.7, scale * 0.72))
+            return
+
+        draw.rounded_rectangle((cx - int(44 * scale), ground_y - int(116 * scale), cx + int(44 * scale), ground_y - int(16 * scale)), radius=int(30 * scale), fill=outfit, outline="#111111", width=3)
+        draw.ellipse((cx - int(42 * scale), ground_y - int(158 * scale), cx + int(42 * scale), ground_y - int(76 * scale)), fill=skin, outline="#111111", width=3)
+        self._draw_comic_eyes(draw, cx, ground_y - int(118 * scale), max(24, int(34 * scale)), expr, {"accent": eye}, max(0.8, scale * 0.82))
+        self._draw_comic_mouth(draw, cx, ground_y - int(94 * scale), mouth, max(0.72, scale * 0.74))
 
     def _draw_dataset_hair(self, draw, cx: int, cy: int, radius: int, hair_color: str, descriptor: str, scale: float) -> None:
         draw.pieslice((cx - radius - 2, cy - radius - 14, cx + radius + 2, cy + radius - 6), 180, 360, fill=hair_color, outline="#111111")
@@ -3704,6 +5123,53 @@ class CominoteEngine:
         style: str,
         scenes: list[Scene],
         visual_plan: dict[str, Any],
+    ) -> list[Path]:
+        if Image is None or ImageDraw is None or ImageFont is None:
+            raise DependencyError("Comic rendering needs Pillow installed in the Python environment.")
+
+        comic_id = image_path.stem
+        page_dir = self.output_dir / f"{comic_id}_pages"
+        page_dir.mkdir(parents=True, exist_ok=True)
+        page_indices = self._paginate_story_indices(len(scenes))
+        scene_pages = [[scenes[index] for index in page] for page in page_indices] or [scenes]
+        panel_pages = [[visual_plan["panels"][index] for index in page] for page in page_indices] or [visual_plan["panels"]]
+        page_paths: list[Path] = []
+        page_count = len(scene_pages)
+
+        for page_index, page_scenes in enumerate(scene_pages):
+            page_path = page_dir / f"{comic_id}-page-{page_index + 1:03d}.png"
+            self._render_page(
+                image_path=page_path,
+                title=title,
+                subject=subject,
+                style=style,
+                scenes=page_scenes,
+                panel_visuals=panel_pages[page_index],
+                visual_plan=visual_plan,
+                page_number=page_index + 1,
+                page_count=page_count,
+                panel_start_index=page_indices[page_index][0] if page_indices and page_indices[page_index] else 0,
+            )
+            page_paths.append(page_path)
+
+        if page_paths:
+            with Image.open(page_paths[0]) as preview:
+                preview.save(image_path, format="PNG", dpi=(300, 300))
+        return page_paths
+
+    def _render_page(
+        self,
+        *,
+        image_path: Path,
+        title: str,
+        subject: str,
+        style: str,
+        scenes: list[Scene],
+        panel_visuals: list[dict[str, Any]],
+        visual_plan: dict[str, Any],
+        page_number: int,
+        page_count: int,
+        panel_start_index: int,
     ) -> None:
         if Image is None or ImageDraw is None or ImageFont is None:
             raise DependencyError("Comic rendering needs Pillow installed in the Python environment.")
@@ -3713,42 +5179,57 @@ class CominoteEngine:
         layout_style = str(style_record.get("layout_style") or visual_plan["theme_profile"].get("layout_style") or "balanced_grid")
         margin = 36  # Consistent outer margin
         gutter = 24  # Increased gutter for better breathing room
-        layout = self._layout_boxes(len(scenes), margin, gutter, layout_style)
+        layout = self._layout_boxes(len(scenes), margin, gutter, layout_style, page_number=page_number)
         max_x = max(lx + lw for lx, ly, lw, lh, _ in layout)
         max_y = max(ly + lh for lx, ly, lw, lh, _ in layout)
-        title_h = 146
+        show_title = page_number == 1
+        title_h = 132 if show_title else 0
+        footer_h = 34
         width = max_x + margin
-        height = title_h + max_y + margin * 2 + 8
+        header_space = title_h + gutter if show_title else 0
+        height = header_space + max_y + margin * 2 + footer_h
 
         img = Image.new("RGB", (width, height), _hex_to_rgb(palette["page"]))
         draw = ImageDraw.Draw(img)
-        # Smooth gradient background with reduced visual noise
-        self._gradient_rect(img, 0, 0, width, height, palette["panel_bot"], palette["sky_bot"])
-        self._draw_page_halftone(draw, 0, 0, width, height, palette["accent"], density=14, dot_r=2, opacity=0.04)
-        self._draw_speed_lines(draw, width // 2, height // 2, width, height, palette["accent"], count=16, opacity=0.02)
-        # Polished page border
-        draw.rounded_rectangle((6, 6, width - 6, height - 6), radius=30, outline="#111111", width=6)
-        draw.rounded_rectangle((12, 12, width - 12, height - 12), radius=26, outline=palette["accent"], width=2)
-        self._draw_dataset_title_banner(
-            img,
-            draw,
-            margin,
-            margin,
-            width - margin * 2,
-            title_h,
-            title,
-            subject,
-            palette,
-            style_record,
-            visual_plan.get("cast_sources", []),
-        )
+        page_top = self._blend_hex(palette["page"], "#ffffff", 0.18)
+        page_bottom = self._blend_hex(palette["panel_bot"], "#ffffff", 0.36)
+        self._gradient_rect(img, 0, 0, width, height, page_top, page_bottom)
+        self._draw_page_halftone(draw, 0, 0, width, height, palette["accent"], density=26, dot_r=1.3, opacity=0.018)
+        draw.rounded_rectangle((10, 10, width - 10, height - 10), radius=18, outline="#111111", width=4)
+        draw.rounded_rectangle((18, 18, width - 18, height - 18), radius=12, outline="#ffffffbb", width=1)
+        if show_title:
+            self._draw_dataset_title_banner(
+                img,
+                draw,
+                margin,
+                margin,
+                width - margin * 2,
+                title_h,
+                title,
+                subject,
+                palette,
+                style_record,
+                visual_plan.get("cast_sources", []),
+            )
 
-        panel_y_offset = margin + title_h + gutter
+        panel_y_offset = margin + header_space
         for lx, ly, lw, lh, scene_idx in layout:
             scene = scenes[scene_idx]
-            visual = visual_plan["panels"][scene_idx]
+            visual = panel_visuals[scene_idx]
             px, py = lx, ly + panel_y_offset
-            self._draw_dataset_panel(img, draw, px, py, lw, lh, scene, visual, palette, style_record, scene_idx)
+            self._draw_dataset_panel(
+                img,
+                draw,
+                px,
+                py,
+                lw,
+                lh,
+                scene,
+                visual,
+                palette,
+                style_record,
+                panel_start_index + scene_idx,
+            )
 
         img.save(image_path, format="PNG", dpi=(300, 300))
 
@@ -4452,16 +5933,21 @@ class CominoteEngine:
         family = (family or "comic").lower()
         font_map = {
             "rounded": [
+                "/Library/Fonts/Fredoka-Bold.ttf" if bold else "/Library/Fonts/Fredoka-Regular.ttf",
+                "/Library/Fonts/Nunito-Bold.ttf" if bold else "/Library/Fonts/Nunito-Regular.ttf",
+                "/Library/Fonts/Poppins-Bold.ttf" if bold else "/Library/Fonts/Poppins-Regular.ttf",
                 "/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf",
                 "/System/Library/Fonts/Supplemental/Trebuchet MS Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Trebuchet MS.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             ],
             "playful": [
+                "/Library/Fonts/Fredoka-Bold.ttf" if bold else "/Library/Fonts/Fredoka-Regular.ttf",
                 "/System/Library/Fonts/Supplemental/Marker Felt Wide.ttf",
                 "/System/Library/Fonts/Supplemental/Chalkboard Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Chalkboard.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             ],
             "display": [
+                "/Library/Fonts/Bangers-Regular.ttf",
                 "/System/Library/Fonts/Supplemental/Impact.ttf",
                 "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf",
@@ -4477,11 +5963,17 @@ class CominoteEngine:
                 "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
             ],
             "sans": [
-                "/System/Library/Fonts/Supplemental/Avenir Next.ttc",
+                "/Library/Fonts/Fredoka-Bold.ttf" if bold else "/Library/Fonts/Fredoka-Regular.ttf",
+                "/Library/Fonts/Nunito-Bold.ttf" if bold else "/Library/Fonts/Nunito-Regular.ttf",
+                "/Library/Fonts/Poppins-Bold.ttf" if bold else "/Library/Fonts/Poppins-Regular.ttf",
+                "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
                 "/System/Library/Fonts/Supplemental/Helvetica.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             ],
             "comic": [
+                "/Library/Fonts/ComicNeue-Bold.ttf" if bold else "/Library/Fonts/ComicNeue-Regular.ttf",
+                "/Library/Fonts/Comic Neue Bold.ttf" if bold else "/Library/Fonts/Comic Neue Regular.ttf",
+                "/System/Library/Fonts/Supplemental/Comic Sans MS Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Comic Sans MS.ttf",
                 "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
                 "/System/Library/Fonts/Supplemental/Helvetica.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -4516,9 +6008,39 @@ class CominoteEngine:
             return pdf_path
         if Image is None:
             raise DependencyError("PDF export needs Pillow installed in the Python environment.")
+        page_paths = self._comic_page_paths(comic_id)
+        if page_paths:
+            images = []
+            try:
+                for path in page_paths:
+                    with Image.open(path) as source:
+                        images.append(source.convert("RGB").copy())
+                if images:
+                    first, rest = images[0], images[1:]
+                    first.save(pdf_path, format="PDF", resolution=150.0, save_all=True, append_images=rest)
+                    return pdf_path
+            finally:
+                for image in images:
+                    image.close()
         with Image.open(png_path) as source:
             source.convert("RGB").save(pdf_path, format="PDF", resolution=150.0)
         return pdf_path
+
+    def _comic_page_paths(self, comic_id: str) -> list[Path]:
+        metadata_path = self.output_dir / f"{comic_id}.json"
+        if not metadata_path.exists():
+            return []
+        try:
+            payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return []
+        page_files = ((payload.get("meta") or {}).get("page_image_files") or [])
+        paths: list[Path] = []
+        for value in page_files:
+            path = self.output_dir / str(value)
+            if path.exists() and path.suffix.lower() == ".png":
+                paths.append(path)
+        return paths
 
     def _write_metadata(self, comic_id: str, payload: dict) -> None:
         path = self.output_dir / f"{comic_id}.json"

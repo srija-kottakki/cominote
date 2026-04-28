@@ -165,6 +165,14 @@ def comic_image(comic_id: str):
         return jsonify({"error": "Comic image not found."}), 404
 
 
+@app.get("/api/comics/<comic_id>/pages/<int:page_number>")
+def comic_page_image(comic_id: str, page_number: int):
+    try:
+        return send_file(engine.page_image_path(comic_id, page_number), mimetype="image/png")
+    except FileNotFoundError:
+        return jsonify({"error": "Comic page image not found."}), 404
+
+
 @app.get("/api/download/<comic_id>")
 def download_comic(comic_id: str):
     try:

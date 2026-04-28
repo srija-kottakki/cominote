@@ -1010,6 +1010,168 @@
         },
         "tags": ["jungle", "river", "forest", "storybook"]
       }
+    },
+    {
+      "id": "fantasy",
+      "label": "Fantasy",
+      "keywords": ["fantasy", "wizard", "dragon", "magic", "kingdom", "quest"],
+      "badge_text": "Magic Quest",
+      "headline": "Magic effects, castle scenery, and a fantasy guide appear instantly.",
+      "sound_effect": "SPARK!",
+      "theme_profile": "fantasy",
+      "ui": {
+        "accent": "#7d4dff",
+        "accent_2": "#2dd4bf",
+        "accent_3": "#facc15",
+        "surface": "#f8f2ff",
+        "bg_start": "#f8f2ff",
+        "bg_end": "#ecfbf7",
+        "glow": "rgba(125, 77, 255, 0.18)"
+      },
+      "comic_elements": ["magic runes", "castle arches", "dragon-glow highlights"],
+      "featured_cast": [
+        {
+          "name": "Quest Mage",
+          "description": "A bright magical guide with a spell-casting pose and enchanted classroom energy.",
+          "variant": "fantasy-ranger",
+          "category": "teacher",
+          "palette": {
+            "hair": "#4b2e83",
+            "skin": "#efc39b",
+            "costume_primary": "#7d4dff",
+            "costume_accent": "#facc15",
+            "eye": "#2dd4bf"
+          },
+          "costume": {
+            "top": "enchanted study robe",
+            "bottom": "quest trousers",
+            "accessory": "glowing spell book",
+            "shoes": "moon boots"
+          },
+          "tags": ["fantasy", "wizard", "magic", "dragon", "quest"]
+        }
+      ],
+      "featured_background": {
+        "name": "Enchanted Library",
+        "description": "A glowing study library with floating lights, castle arches, and magic depth.",
+        "category": "fantasy",
+        "prompt_fragment": "magical library, floating lights, castle arches, dragon glow, cinematic comic panels",
+        "palette": {
+          "primary": "#ede0ff",
+          "secondary": "#fff6d6",
+          "accent": "#7d4dff",
+          "floor": "#7c5a36"
+        },
+        "tags": ["fantasy", "library", "magic", "castle"]
+      }
+    },
+    {
+      "id": "cartoon",
+      "label": "Cartoon",
+      "keywords": ["cartoon", "fun", "colorful", "animated", "toon"],
+      "badge_text": "Toon Pop",
+      "headline": "Colorful exaggerated cartoon styling loads with its own playful lead.",
+      "sound_effect": "POP!",
+      "theme_profile": "cartoon_kids",
+      "ui": {
+        "accent": "#fb5607",
+        "accent_2": "#ffb703",
+        "accent_3": "#2ec4b6",
+        "surface": "#fff8dd",
+        "bg_start": "#fff8dd",
+        "bg_end": "#edfff2",
+        "glow": "rgba(255, 183, 3, 0.22)"
+      },
+      "comic_elements": ["sticker bursts", "bouncy panels", "rainbow classroom props"],
+      "featured_cast": [
+        {
+          "name": "Spark",
+          "description": "A playful cartoon explorer with bold expressions and colorful motion.",
+          "variant": "explorer",
+          "category": "student",
+          "palette": {
+            "hair": "#e63946",
+            "skin": "#efc39b",
+            "costume_primary": "#fb5607",
+            "costume_accent": "#ffb703",
+            "eye": "#2ec4b6"
+          },
+          "costume": {
+            "top": "toon hoodie",
+            "bottom": "bounce-ready shorts",
+            "accessory": "idea badge",
+            "shoes": "sticker sneakers"
+          },
+          "tags": ["cartoon", "toon", "colorful", "student", "playful"]
+        }
+      ],
+      "featured_background": {
+        "name": "Sticker Clubhouse",
+        "description": "A bright learning clubhouse with doodles, stickers, and warm color.",
+        "category": "school",
+        "prompt_fragment": "cartoon clubhouse, sticker walls, doodle board, playful classroom energy",
+        "palette": {
+          "primary": "#fff7bf",
+          "secondary": "#edfff2",
+          "accent": "#fb5607",
+          "floor": "#d4a373"
+        },
+        "tags": ["cartoon", "clubhouse", "stickers", "colorful"]
+      }
+    },
+    {
+      "id": "horror",
+      "label": "Horror",
+      "keywords": ["horror", "scary", "haunted", "shadow", "mystery", "fog"],
+      "badge_text": "Mystery Mode",
+      "headline": "Fog, spotlight shadows, and a suspense-styled guide appear right away.",
+      "sound_effect": "WHUM!",
+      "theme_profile": "horror",
+      "ui": {
+        "accent": "#7f1d1d",
+        "accent_2": "#8b5cf6",
+        "accent_3": "#facc15",
+        "surface": "#f8f2f2",
+        "bg_start": "#fee2e2",
+        "bg_end": "#ede9fe",
+        "glow": "rgba(127, 29, 29, 0.2)"
+      },
+      "comic_elements": ["cinematic fog", "spotlight shadows", "mystery glows"],
+      "featured_cast": [
+        {
+          "name": "Nocturne",
+          "description": "A cinematic mystery guide with shadow styling and focused expressions.",
+          "variant": "mystic-hero",
+          "category": "teacher",
+          "palette": {
+            "hair": "#111827",
+            "skin": "#efc39b",
+            "costume_primary": "#7f1d1d",
+            "costume_accent": "#8b5cf6",
+            "eye": "#facc15"
+          },
+          "costume": {
+            "top": "shadow jacket",
+            "bottom": "night trousers",
+            "accessory": "glow charm",
+            "shoes": "silent boots"
+          },
+          "tags": ["horror", "mystery", "shadow", "fog", "cinematic"]
+        }
+      ],
+      "featured_background": {
+        "name": "Moonlit Mystery Hall",
+        "description": "A moonlit hall with fog lines, deep shadows, and suspenseful comic depth.",
+        "category": "school",
+        "prompt_fragment": "moonlit mystery hall, fog, shadow frame, spotlight glow, cinematic suspense",
+        "palette": {
+          "primary": "#2f3545",
+          "secondary": "#e8eef8",
+          "accent": "#7f1d1d",
+          "floor": "#4b5563"
+        },
+        "tags": ["horror", "mystery", "fog", "moonlit"]
+      }
     }
   ]
 }
