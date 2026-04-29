@@ -4,8 +4,13 @@ import csv
 import hashlib
 import json
 import math
+import os
 import random
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import textwrap
 import uuid
 from collections import Counter
@@ -42,12 +47,15 @@ except ImportError:
     Document = None
 
 try:
-    from PIL import Image, ImageDraw, ImageFont, ImageFilter  # type: ignore
+    from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps, ImageStat  # type: ignore
 except ImportError:
     Image = None
     ImageDraw = None
+    ImageEnhance = None
     ImageFont = None
     ImageFilter = None
+    ImageOps = None
+    ImageStat = None
 
 
 MAX_TEXT_CHARS = 25_000_000
@@ -137,6 +145,10 @@ JARGON_REPLACEMENTS = (
 )
 
 ALLOWED_EXTENSIONS = {".txt", ".pdf", ".docx"}
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+MAX_IMAGE_UPLOADS = 12
+MAX_IMAGE_FILE_SIZE = 15 * 1024 * 1024
+MAX_IMAGE_RENDER_DIMENSION = 2200
 FALLBACK_STOPWORDS = {
     "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has",
     "have", "in", "into", "is", "it", "its", "of", "on", "or", "that", "the",
@@ -149,6 +161,40 @@ SUBJECT_KEYWORDS = {
     "mathematics": {"equation", "graph", "number", "angle", "algebra", "formula", "value", "slope"},
     "literature": {"theme", "plot", "character", "setting", "story", "conflict", "symbol", "narrative"},
 }
+OCR_TOPIC_KEYWORDS = {
+    "Physics": {"force", "motion", "energy", "gravity", "velocity", "acceleration", "wave", "light", "electricity", "magnet", "quantum", "physics"},
+    "Chemistry": {"atom", "molecule", "reaction", "compound", "element", "acid", "base", "bond", "periodic", "chemistry", "solution", "electron"},
+    "Biology": {"cell", "organism", "biology", "gene", "dna", "plant", "animal", "tissue", "photosynthesis", "microbe", "microscope", "evolution"},
+    "Science": {"science", "experiment", "observation", "hypothesis", "microscope", "molecular", "biology", "chemistry", "physics", "research"},
+    "Maths": {"equation", "algebra", "geometry", "calculus", "number", "graph", "ratio", "fraction", "theorem", "probability", "statistics", "math"},
+    "History": {"history", "empire", "war", "revolution", "king", "queen", "dynasty", "civilization", "independence", "ancient", "timeline"},
+    "Geography": {"geography", "map", "climate", "river", "mountain", "plateau", "continent", "ocean", "latitude", "longitude", "population"},
+    "Literature": {"literature", "poem", "novel", "author", "character", "plot", "theme", "metaphor", "story", "drama", "narrator"},
+    "Computer Science": {"computer", "algorithm", "program", "software", "hardware", "database", "network", "code", "binary", "data", "api"},
+    "Economics": {"economics", "market", "demand", "supply", "inflation", "price", "trade", "consumer", "producer", "money", "gdp"},
+}
+OCR_TOPIC_SUBJECT_MAP = {
+    "Physics": "science",
+    "Chemistry": "science",
+    "Biology": "science",
+    "Science": "science",
+    "Maths": "mathematics",
+    "History": "history",
+    "Geography": "history",
+    "Literature": "literature",
+    "Computer Science": "science",
+    "Economics": "history",
+}
+OCR_TEXT_CORRECTIONS = (
+    (r"\bde\s+pect\b", "depict"),
+    (r"\bbiclogy\b", "biology"),
+    (r"\bbiolcgy\b", "biology"),
+    (r"\bchernistry\b", "chemistry"),
+    (r"\bchem\s+istry\b", "chemistry"),
+    (r"\bphys\s+ics\b", "physics"),
+    (r"\bmicro\s+scopes?\b", "microscopes"),
+    (r"\bmole\s+cular\b", "molecular"),
+)
 SUBJECT_STYLE_DEFAULTS = {
     "science": "anime_school",
     "history": "superhero_comic",
@@ -564,6 +610,26 @@ class SourceSection:
     index: int
 
 
+@dataclass
+class ImageComicAnalysis:
+    filename: str
+    width: int
+    height: int
+    orientation: str
+    scene: str
+    objects: list[str]
+    people: str
+    expression: str
+    action: str
+    background: str
+    mood: str
+    palette: list[str]
+    brightness: float
+    saturation: float
+    contrast: float
+    edge_density: float
+
+
 def _split_text_smart(text: str, chunk_size: int = CHUNK_SIZE) -> list[str]:
     paragraphs = re.split(r"\n{2,}", text)
     chunks, current = [], ""
@@ -615,6 +681,7 @@ class CominoteEngine:
         self.output_dir = self.base_dir / "generated"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self._spacy_model = None
+        self._last_ocr_provider = ""
         self._load_dataset_assets()
         self._load_theme_datasets()
 
@@ -767,6 +834,137 @@ class CominoteEngine:
             {"chunk_count": len(chunks), "panel_count": len(scenes), "page_count": page_count},
         )
         return payload
+
+    def generate_from_images(
+        self,
+        *,
+        title: str,
+        theme_slug: str,
+        image_files: list[Path],
+        text: str = "",
+        user_id: str = "",
+        user_name: str = "",
+        progress_callback: ProgressCallback | None = None,
+    ) -> dict:
+        if Image is None or ImageOps is None:
+            raise DependencyError("Text image conversion needs Pillow installed in the Python environment.")
+        if not image_files:
+            raise ValidationError("Please upload at least one JPG or PNG text image.")
+        if len(image_files) > MAX_IMAGE_UPLOADS:
+            raise ValidationError(f"Please upload {MAX_IMAGE_UPLOADS} text images or fewer.")
+
+        self._last_ocr_provider = ""
+        resolved_theme_slug = self._resolve_theme_alias(theme_slug)
+        theme_meta = self._theme_datasets_by_slug.get(resolved_theme_slug)
+        if theme_meta is None:
+            raise ValidationError("Please choose a supported text image comic theme before converting.")
+
+        title = (title or "").strip() or f"{theme_meta['title']} Study Comic"
+        guidance = self._normalise_whitespace(text)
+
+        self._notify(
+            progress_callback,
+            "collecting",
+            10,
+            "Reading image...",
+            {"image_count": len(image_files)},
+        )
+
+        ocr_sections = self._extract_ocr_sections_from_images(image_files, progress_callback)
+        raw_text = "\n\n".join(section["text"] for section in ocr_sections if section.get("text"))
+        cleaned_text = self._clean_ocr_text(raw_text)
+        if not cleaned_text:
+            raise ValidationError(
+                "This image has no readable study content. Please upload notes, textbook screenshots, or educational text images."
+            )
+        if not self._looks_like_study_content(cleaned_text):
+            raise ValidationError(
+                "This image has no readable study content. Please upload notes, textbook screenshots, or educational text images."
+            )
+
+        detected_topic, subject = self._detect_ocr_topic(cleaned_text)
+        learning_points = self._ocr_learning_points(cleaned_text, detected_topic)
+        comic_text = self._build_ocr_comic_source_text(
+            cleaned_text=cleaned_text,
+            learning_points=learning_points,
+            detected_topic=detected_topic,
+            guidance=guidance,
+        )
+
+        self._notify(
+            progress_callback,
+            "reading",
+            42,
+            f"Extracted study text and detected {detected_topic} as the topic.",
+            {
+                "image_count": len(image_files),
+                "ocr_character_count": len(cleaned_text),
+                "detected_topic": detected_topic,
+            },
+        )
+
+        def comic_progress(stage: str, progress: int, message: str, meta: dict[str, Any] | None = None) -> None:
+            shifted = 44 + int(max(0, min(progress, 100)) * 0.52)
+            if stage == "rendering":
+                shifted = max(82, shifted)
+            image_message = message
+            if stage in {"collecting", "reading"}:
+                image_message = "Generating comic from extracted study text..."
+            self._notify(progress_callback, stage, min(98, shifted), image_message, meta)
+
+        result = self.generate(
+            title=title,
+            subject=subject,
+            style=str(theme_meta.get("recommended_style") or ""),
+            cast_mode="auto",
+            theme_slug=resolved_theme_slug,
+            text=comic_text,
+            uploaded_file=None,
+            user_id=user_id,
+            user_name=user_name,
+            progress_callback=comic_progress,
+        )
+
+        result["subject"] = detected_topic
+        result["source_label"] = (
+            f"{len(image_files)} Text Image OCR" if len(image_files) == 1 else f"{len(image_files)} Text Images OCR"
+        )
+        result["summary"] = (
+            f"{title} was generated from OCR-extracted {detected_topic} study content using the "
+            f"{theme_meta['title']} art style."
+        )
+        result.setdefault("meta", {}).update(
+            {
+                "input_mode": "image_ocr",
+                "image_count": len(image_files),
+                "ocr_provider": self._last_ocr_provider,
+                "ocr_character_count": len(cleaned_text),
+                "ocr_detected_topic": detected_topic,
+                "ocr_subject_slug": subject,
+                "ocr_learning_points": learning_points,
+                "ocr_sections": [
+                    {
+                        "filename": section.get("filename", ""),
+                        "line_count": section.get("line_count", 0),
+                        "confidence": section.get("confidence", 0),
+                    }
+                    for section in ocr_sections
+                ],
+            }
+        )
+        self._write_metadata(result["comic_id"], result)
+        self._notify(
+            progress_callback,
+            "completed",
+            100,
+            "Your OCR-based comic is ready.",
+            {
+                "image_count": len(image_files),
+                "panel_count": result.get("panel_count", 0),
+                "page_count": result.get("page_count", 0),
+            },
+        )
+        return result
 
     def get_comic(self, comic_id: str) -> dict:
         path = self.output_dir / f"{comic_id}.json"
@@ -1037,6 +1235,645 @@ class CominoteEngine:
             raise ValidationError("The uploaded DOCX did not contain extractable text.")
         return sections
 
+    def _resolve_theme_alias(self, theme_slug: str) -> str:
+        slug = self._slugify(theme_slug or "")
+        if slug in self._theme_datasets_by_slug:
+            return slug
+        aliases = {
+            "anime": "naruto",
+            "manga-anime": "naruto",
+            "superhero": "marvel",
+            "sci-fi": "space",
+            "sci-fi-comic": "space",
+            "scifi": "space",
+            "science-fiction": "space",
+            "cartoon-kids": "cartoon",
+        }
+        return aliases.get(slug, slug)
+
+    def _extract_ocr_sections_from_images(
+        self,
+        image_files: list[Path],
+        progress_callback: ProgressCallback | None = None,
+    ) -> list[dict[str, Any]]:
+        sections: list[dict[str, Any]] = []
+        for index, path in enumerate(image_files):
+            self._validate_image_upload_path(path)
+            progress = 14 + int((index / max(len(image_files), 1)) * 24)
+            self._notify(
+                progress_callback,
+                "reading",
+                progress,
+                f"Reading image {index + 1} of {len(image_files)}...",
+                {"image_index": index + 1, "image_count": len(image_files)},
+            )
+
+            with tempfile.NamedTemporaryFile(prefix="cominote-ocr-", suffix=".png", delete=False) as handle:
+                preprocessed_path = Path(handle.name)
+            try:
+                clarity = self._preprocess_image_for_ocr(path, preprocessed_path)
+                self._notify(
+                    progress_callback,
+                    "reading",
+                    progress + 4,
+                    f"Extracting text from image {index + 1} of {len(image_files)}...",
+                    {"image_index": index + 1, "image_count": len(image_files)},
+                )
+                ocr_result = self._run_ocr(preprocessed_path)
+            finally:
+                preprocessed_path.unlink(missing_ok=True)
+
+            raw_text = str(ocr_result.get("text") or "")
+            cleaned = self._clean_ocr_text(raw_text)
+            line_count = len([line for line in (ocr_result.get("lines") or []) if str(line.get("text") or "").strip()])
+            confidence_values = [
+                float(line.get("confidence") or 0)
+                for line in (ocr_result.get("lines") or [])
+                if isinstance(line, dict)
+            ]
+            avg_confidence = round(sum(confidence_values) / len(confidence_values), 3) if confidence_values else 0.0
+
+            if not cleaned:
+                if clarity["contrast"] >= 0.035 and clarity["edge_density"] < 0.018:
+                    raise ValidationError("Image unclear. Please upload a clearer image.")
+                raise ValidationError(
+                    "This image has no readable study content. Please upload notes, textbook screenshots, or educational text images."
+                )
+            if len(cleaned) < 12:
+                raise ValidationError(
+                    "This image has no readable study content. Please upload notes, textbook screenshots, or educational text images."
+                )
+            if line_count == 0:
+                raise ValidationError("Image unclear. Please upload a clearer image.")
+            if avg_confidence and avg_confidence < 0.28:
+                raise ValidationError("Image unclear. Please upload a clearer image.")
+
+            sections.append(
+                {
+                    "filename": path.name,
+                    "text": cleaned,
+                    "raw_text": raw_text,
+                    "line_count": line_count,
+                    "confidence": avg_confidence,
+                    "clarity": clarity,
+                }
+            )
+
+        return sections
+
+    def _validate_image_upload_path(self, path: Path) -> None:
+        suffix = path.suffix.lower()
+        if suffix not in ALLOWED_IMAGE_EXTENSIONS:
+            raise ValidationError("Only JPG, JPEG, and PNG text image uploads are supported.")
+        if not path.exists():
+            raise ValidationError("Uploaded text image could not be found for processing.")
+        if path.stat().st_size > MAX_IMAGE_FILE_SIZE:
+            raise ValidationError("Each text image must be 15 MB or smaller.")
+
+    def _preprocess_image_for_ocr(self, source_path: Path, output_path: Path) -> dict[str, float]:
+        if Image is None or ImageOps is None or ImageEnhance is None:
+            raise DependencyError("Image OCR preprocessing needs Pillow installed in the Python environment.")
+        try:
+            with Image.open(source_path) as source:
+                image = ImageOps.exif_transpose(source)
+                image = image.convert("RGB")
+        except Exception as exc:
+            raise ValidationError("Uploaded text image could not be opened as a valid JPG or PNG.") from exc
+
+        image.thumbnail((2600, 2600), Image.Resampling.LANCZOS)
+        if min(image.size) < 900:
+            scale = min(3.0, 900 / max(min(image.size), 1))
+            image = image.resize((int(image.width * scale), int(image.height * scale)), Image.Resampling.LANCZOS)
+
+        gray = ImageOps.grayscale(image)
+        stat = ImageStat.Stat(gray) if ImageStat is not None else None
+        mean = stat.mean[0] / 255 if stat else 0.5
+        stddev = stat.stddev[0] / 255 if stat else 0.1
+        gray = ImageEnhance.Contrast(gray).enhance(1.7 if stddev < 0.18 else 1.35)
+        gray = ImageEnhance.Sharpness(gray).enhance(1.45)
+        gray = gray.filter(ImageFilter.MedianFilter(size=3)) if ImageFilter is not None else gray
+
+        if ImageStat is not None and ImageFilter is not None:
+            edges = gray.filter(ImageFilter.FIND_EDGES)
+            edge_density = min(1.0, (ImageStat.Stat(edges).mean[0] / 255) * 2.2)
+        else:
+            edge_density = stddev
+
+        gray.save(output_path, format="PNG")
+        return {
+            "brightness": round(mean, 3),
+            "contrast": round(stddev, 3),
+            "edge_density": round(edge_density, 3),
+        }
+
+    def _run_ocr(self, image_path: Path) -> dict[str, Any]:
+        self._last_ocr_provider = ""
+        errors: list[str] = []
+        empty_result: dict[str, Any] | None = None
+        for provider in (self._ocr_with_macos_vision, self._ocr_with_tesseract_cli, self._ocr_with_pytesseract):
+            try:
+                result = provider(image_path)
+            except DependencyError as exc:
+                errors.append(str(exc))
+                continue
+            if result.get("error"):
+                errors.append(str(result["error"]))
+                continue
+            text = str(result.get("text") or "").strip()
+            if text:
+                return result
+            if empty_result is None:
+                empty_result = result
+
+        if empty_result is not None:
+            return empty_result
+
+        if errors:
+            raise DependencyError(
+                "OCR is unavailable or failed. Install Tesseract OCR, pytesseract, or run ComiNote on macOS with Vision OCR available. "
+                f"Details: {' | '.join(errors[:3])}"
+            )
+        raise DependencyError("OCR is unavailable. Install Tesseract OCR or run ComiNote on macOS with Vision OCR available.")
+
+    def _ocr_with_macos_vision(self, image_path: Path) -> dict[str, Any]:
+        if sys.platform != "darwin":
+            raise DependencyError("macOS Vision OCR is not available on this platform.")
+        swift = shutil.which("swift")
+        helper = self.base_dir / "scripts" / "ocr_vision.swift"
+        if not swift or not helper.exists():
+            raise DependencyError("macOS Vision OCR helper is not available.")
+
+        env = os.environ.copy()
+        env.setdefault("CLANG_MODULE_CACHE_PATH", "/tmp/cominote-clang-cache")
+        completed = subprocess.run(
+            [swift, str(helper), str(image_path)],
+            cwd=str(self.base_dir),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=45,
+            check=False,
+        )
+        if completed.returncode != 0 and not completed.stdout.strip():
+            raise DependencyError((completed.stderr or "macOS Vision OCR failed.").strip())
+        try:
+            payload = json.loads(completed.stdout.strip() or "{}")
+        except json.JSONDecodeError as exc:
+            raise DependencyError("macOS Vision OCR returned an unreadable response.") from exc
+        if payload.get("error"):
+            return payload
+        self._last_ocr_provider = "macos_vision"
+        return payload
+
+    def _ocr_with_tesseract_cli(self, image_path: Path) -> dict[str, Any]:
+        tesseract = shutil.which("tesseract")
+        if not tesseract:
+            raise DependencyError("Tesseract CLI is not installed.")
+        completed = subprocess.run(
+            [tesseract, str(image_path), "stdout", "--psm", "6", "-l", "eng"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=45,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise DependencyError((completed.stderr or "Tesseract OCR failed.").strip())
+        self._last_ocr_provider = "tesseract_cli"
+        text = completed.stdout.strip()
+        return {
+            "text": text,
+            "lines": [{"text": line, "confidence": 0.75} for line in text.splitlines() if line.strip()],
+            "error": None,
+        }
+
+    def _ocr_with_pytesseract(self, image_path: Path) -> dict[str, Any]:
+        try:
+            import pytesseract  # type: ignore
+        except ImportError as exc:
+            raise DependencyError("pytesseract is not installed.") from exc
+        with Image.open(image_path) as image:
+            text = pytesseract.image_to_string(image, config="--psm 6")
+        self._last_ocr_provider = "pytesseract"
+        text = text.strip()
+        return {
+            "text": text,
+            "lines": [{"text": line, "confidence": 0.7} for line in text.splitlines() if line.strip()],
+            "error": None,
+        }
+
+    def _clean_ocr_text(self, text: str) -> str:
+        if not text:
+            return ""
+        cleaned = text.replace("\ufeff", " ").replace("\u00a0", " ")
+        cleaned = re.sub(r"(?<=\w)-\s*\n\s*(?=\w)", "", cleaned)
+        cleaned = re.sub(r"[|~`^*_={}<>\\]+", " ", cleaned)
+        cleaned = re.sub(r"[^\S\n]+", " ", cleaned)
+        raw_lines = [line.strip(" \t-•·") for line in cleaned.splitlines()]
+        lines: list[str] = []
+        for line in raw_lines:
+            line = re.sub(r"\s+", " ", line).strip()
+            if not line:
+                continue
+            if re.fullmatch(r"[\W\d_]{1,6}", line):
+                continue
+            if len(line) <= 2:
+                continue
+            lines.append(line)
+
+        paragraphs: list[str] = []
+        current = ""
+        for line in lines:
+            if not current:
+                current = line
+                continue
+            if current.endswith((".", "!", "?", ":")) or self._looks_like_heading(line):
+                paragraphs.append(current)
+                current = line
+            else:
+                current = f"{current} {line}"
+        if current:
+            paragraphs.append(current)
+
+        normalized = "\n\n".join(self._normalise_whitespace(paragraph) for paragraph in paragraphs)
+        normalized = re.sub(r"\s+([,.;:!?])", r"\1", normalized)
+        normalized = re.sub(r"([.!?])(?=[A-Z])", r"\1 ", normalized)
+        for pattern, replacement in OCR_TEXT_CORRECTIONS:
+            normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
+        return normalized.strip()
+
+    def _looks_like_study_content(self, text: str) -> bool:
+        words = self._tokens(text)
+        if len(words) < 8:
+            return False
+        lower = text.lower()
+        topic_hits = sum(
+            1
+            for keywords in OCR_TOPIC_KEYWORDS.values()
+            for keyword in keywords
+            if keyword in lower
+        )
+        academic_markers = {
+            "define", "means", "concept", "example", "study", "notes", "chapter", "section",
+            "process", "system", "structure", "function", "cause", "effect", "important",
+            "therefore", "because", "explain", "classification", "types",
+        }
+        marker_hits = sum(1 for marker in academic_markers if marker in lower)
+        sentence_count = len(self._sentences(text))
+        return topic_hits >= 1 or marker_hits >= 2 or (len(words) >= 24 and sentence_count >= 2)
+
+    def _detect_ocr_topic(self, text: str) -> tuple[str, str]:
+        lower = text.lower()
+        scores: dict[str, int] = {}
+        for topic, keywords in OCR_TOPIC_KEYWORDS.items():
+            score = 0
+            for keyword in keywords:
+                hits = lower.count(keyword)
+                if hits:
+                    score += hits * (3 if len(keyword) > 5 else 2)
+            scores[topic] = score
+
+        topic = max(scores, key=scores.get)
+        if scores.get(topic, 0) <= 0:
+            topic = "Science"
+        return topic, OCR_TOPIC_SUBJECT_MAP.get(topic, "science")
+
+    def _ocr_learning_points(self, text: str, detected_topic: str) -> list[str]:
+        sentences = self._section_candidate_sentences(text)
+        if not sentences:
+            sentences = self._sentences(text)
+        scored: list[tuple[int, int, str]] = []
+        topic_terms = OCR_TOPIC_KEYWORDS.get(detected_topic, set())
+        for index, sentence in enumerate(sentences):
+            lower = sentence.lower()
+            score = min(len(sentence.split()), 24)
+            score += sum(6 for keyword in topic_terms if keyword in lower)
+            score += sum(3 for cue in ("means", "is", "are", "because", "therefore", "process", "function", "example") if cue in lower)
+            if self._looks_like_heading(sentence):
+                score += 4
+            scored.append((score, -index, self._finish_sentence(self._humanize_text(sentence))))
+        selected: list[str] = []
+        seen: set[str] = set()
+        for _score, _neg_index, sentence in sorted(scored, reverse=True):
+            key = self._sentence_selection_key(sentence)
+            if key in seen:
+                continue
+            seen.add(key)
+            selected.append(self._shorten_text(sentence, width=180))
+            if len(selected) >= 10:
+                break
+        return selected or [self._shorten_text(text, width=180)]
+
+    def _build_ocr_comic_source_text(
+        self,
+        *,
+        cleaned_text: str,
+        learning_points: list[str],
+        detected_topic: str,
+        guidance: str,
+    ) -> str:
+        point_text = "\n".join(f"- {point}" for point in learning_points)
+        sections = [
+            f"{detected_topic} lesson overview.",
+            point_text,
+            cleaned_text,
+        ]
+        if guidance:
+            sections.append(f"Extra user guidance:\n{guidance}")
+        return "\n\n".join(section.strip() for section in sections if section.strip())
+
+    def _prepare_image_comic_inputs(
+        self,
+        image_files: list[Path],
+        progress_callback: ProgressCallback | None = None,
+    ) -> list[dict[str, Any]]:
+        prepared: list[dict[str, Any]] = []
+        for index, path in enumerate(image_files):
+            progress = 18 + int(((index + 1) / max(len(image_files), 1)) * 42)
+            image = self._load_image_for_comic(path)
+            analysis = self._analyze_image_for_comic(image, path.name)
+            prepared.append({"image": image, "analysis": analysis})
+            self._notify(
+                progress_callback,
+                "reading",
+                progress,
+                f"Analyzed image {index + 1} of {len(image_files)}: {analysis.scene}.",
+                {"image_index": index + 1, "image_count": len(image_files)},
+            )
+        return prepared
+
+    def _load_image_for_comic(self, path: Path) -> Any:
+        suffix = path.suffix.lower()
+        if suffix not in ALLOWED_IMAGE_EXTENSIONS:
+            raise ValidationError("Only JPG, JPEG, and PNG image uploads are supported.")
+        if not path.exists():
+            raise ValidationError("Uploaded image could not be found for processing.")
+        if path.stat().st_size > MAX_IMAGE_FILE_SIZE:
+            raise ValidationError("Each image must be 15 MB or smaller.")
+
+        try:
+            with Image.open(path) as source:
+                image = ImageOps.exif_transpose(source)
+                if image.mode in {"RGBA", "LA"}:
+                    alpha = image.getchannel("A")
+                    background = Image.new("RGB", image.size, "#ffffff")
+                    background.paste(image.convert("RGB"), mask=alpha)
+                    image = background
+                else:
+                    image = image.convert("RGB")
+
+                image.thumbnail(
+                    (MAX_IMAGE_RENDER_DIMENSION, MAX_IMAGE_RENDER_DIMENSION),
+                    Image.Resampling.LANCZOS,
+                )
+                return image.copy()
+        except ValidationError:
+            raise
+        except Exception as exc:
+            raise ValidationError("One of the uploaded images could not be opened as a valid JPG or PNG.") from exc
+
+    def _analyze_image_for_comic(self, image: Any, filename: str) -> ImageComicAnalysis:
+        sample = image.copy()
+        sample.thumbnail((320, 320), Image.Resampling.BICUBIC)
+        pixels = list(sample.getdata())
+        total = max(len(pixels), 1)
+
+        brightness_values: list[float] = []
+        saturation_total = 0.0
+        green = blue = warm = dark = skin = 0
+        for r, g, b in pixels:
+            luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+            brightness_values.append(luminance)
+            mx = max(r, g, b)
+            mn = min(r, g, b)
+            saturation_total += 0 if mx == 0 else (mx - mn) / mx
+            if g > r * 1.12 and g > b * 1.02 and g > 70:
+                green += 1
+            if b > r * 1.08 and b > g * 0.92 and b > 85:
+                blue += 1
+            if r > b * 1.18 and r > 90 and g > 50:
+                warm += 1
+            if luminance < 0.25:
+                dark += 1
+            if r > 95 and g > 45 and b > 20 and r > g and r > b and max(r, g, b) - min(r, g, b) > 15:
+                skin += 1
+
+        brightness = sum(brightness_values) / total
+        saturation = saturation_total / total
+        contrast = (sum((value - brightness) ** 2 for value in brightness_values) / total) ** 0.5
+        if ImageStat is not None:
+            edge_image = sample.convert("L").filter(ImageFilter.FIND_EDGES)
+            edge_density = min(1.0, (ImageStat.Stat(edge_image).mean[0] / 255) * 2.2)
+        else:
+            edge_density = contrast
+
+        green_ratio = green / total
+        blue_ratio = blue / total
+        warm_ratio = warm / total
+        dark_ratio = dark / total
+        skin_ratio = skin / total
+
+        width, height = image.size
+        if width > height * 1.18:
+            orientation = "landscape"
+        elif height > width * 1.18:
+            orientation = "portrait"
+        else:
+            orientation = "square"
+
+        if dark_ratio > 0.42:
+            scene = "night or low-light scene"
+        elif green_ratio > 0.24:
+            scene = "outdoor nature scene"
+        elif blue_ratio > 0.26 and brightness > 0.42:
+            scene = "sky or water scene"
+        elif edge_density > 0.28 and contrast > 0.24:
+            scene = "busy action scene"
+        elif saturation < 0.16:
+            scene = "quiet indoor scene"
+        else:
+            scene = "colorful everyday scene"
+
+        if skin_ratio > 0.055:
+            people = "one or more people likely visible"
+        elif skin_ratio > 0.018:
+            people = "possible person or character detail"
+        else:
+            people = "no clear person detected"
+
+        if "people" in people or "person" in people:
+            if dark_ratio > 0.34:
+                expression = "serious or dramatic expression"
+            elif saturation > 0.32 and brightness > 0.48:
+                expression = "bright cheerful expression"
+            elif edge_density > 0.3:
+                expression = "alert action-focused expression"
+            else:
+                expression = "focused expression"
+        else:
+            expression = "visual mood led by the main subject"
+
+        if edge_density > 0.32:
+            action = "fast movement or busy detail"
+        elif contrast > 0.25:
+            action = "strong pose with dramatic contrast"
+        else:
+            action = "calm staged moment"
+
+        if green_ratio > 0.24:
+            background = "green outdoor background"
+        elif blue_ratio > 0.24:
+            background = "open blue sky or water background"
+        elif dark_ratio > 0.36:
+            background = "shadow-heavy background"
+        elif warm_ratio > 0.22:
+            background = "warm indoor or sunset background"
+        else:
+            background = "mixed everyday background"
+
+        if dark_ratio > 0.36:
+            mood = "dramatic"
+        elif saturation > 0.34 and edge_density > 0.24:
+            mood = "energetic"
+        elif brightness > 0.62:
+            mood = "bright"
+        else:
+            mood = "balanced"
+
+        objects: list[str] = ["main subject", "background shapes"]
+        if "people" in people or "person" in people:
+            objects.insert(0, "people or character")
+        if green_ratio > 0.18:
+            objects.append("plants or outdoor elements")
+        if blue_ratio > 0.2:
+            objects.append("sky or water")
+        if warm_ratio > 0.2:
+            objects.append("warm colored objects")
+        if edge_density > 0.26:
+            objects.append("bold edges and action detail")
+        objects = list(dict.fromkeys(objects))[:5]
+
+        return ImageComicAnalysis(
+            filename=filename,
+            width=width,
+            height=height,
+            orientation=orientation,
+            scene=scene,
+            objects=objects,
+            people=people,
+            expression=expression,
+            action=action,
+            background=background,
+            mood=mood,
+            palette=self._dominant_palette(sample),
+            brightness=round(brightness, 3),
+            saturation=round(saturation, 3),
+            contrast=round(contrast, 3),
+            edge_density=round(edge_density, 3),
+        )
+
+    def _dominant_palette(self, image: Any, color_count: int = 5) -> list[str]:
+        palette_image = image.copy()
+        palette_image.thumbnail((96, 96), Image.Resampling.BICUBIC)
+        try:
+            quantized = palette_image.quantize(colors=color_count, method=Image.Quantize.MEDIANCUT)
+            colors = quantized.convert("RGB").getcolors(maxcolors=96 * 96) or []
+        except Exception:
+            colors = palette_image.convert("RGB").getcolors(maxcolors=96 * 96) or []
+        colors = sorted(colors, key=lambda item: item[0], reverse=True)
+        dominant: list[str] = []
+        for _count, color in colors:
+            if isinstance(color, int):
+                continue
+            r, g, b = color[:3]
+            hex_color = _rgb_to_hex((r, g, b))
+            if hex_color not in dominant:
+                dominant.append(hex_color)
+            if len(dominant) >= color_count:
+                break
+        return dominant or ["#ffd93d", "#f4631e", "#1a1a1a"]
+
+    def _infer_image_subject(self, analyses: list[ImageComicAnalysis], theme_meta: dict[str, Any]) -> str:
+        theme_profile = str(theme_meta.get("theme_profile") or "").lower()
+        scene_blob = " ".join(
+            f"{analysis.scene} {analysis.background} {' '.join(analysis.objects)}"
+            for analysis in analyses
+        ).lower()
+        if theme_profile in {"superhero", "anime", "fantasy"}:
+            return "literature"
+        if "plant" in scene_blob or "sky" in scene_blob or "water" in scene_blob:
+            return "science"
+        if "edge" in scene_blob or "shape" in scene_blob:
+            return "mathematics"
+        return "literature"
+
+    def _image_concepts(self, analyses: list[ImageComicAnalysis], theme_meta: dict[str, Any]) -> list[Concept]:
+        counts: Counter[str] = Counter()
+        for analysis in analyses:
+            counts.update([analysis.scene.title(), analysis.mood.title(), analysis.action.title()])
+            counts.update(item.title() for item in analysis.objects)
+        counts.update([str(theme_meta.get("title") or "Image Comic")])
+        concepts = [
+            Concept(label=label, score=round(1.0 + count * 0.4, 2), kind="visual")
+            for label, count in counts.most_common(6)
+        ]
+        return concepts or [Concept(label="Image Comic", score=1.0, kind="visual")]
+
+    def _image_scenes(
+        self,
+        *,
+        title: str,
+        subject: str,
+        analyses: list[ImageComicAnalysis],
+        theme_title: str,
+        guidance: str = "",
+    ) -> list[Scene]:
+        backgrounds = BACKGROUND_LIBRARY.get(subject, BACKGROUND_LIBRARY["literature"])
+        cast = self._story_cast(subject, self._image_concepts(analyses, {"title": theme_title}), [], theme_title)
+        scenes: list[Scene] = []
+        single_image_modes = ("Opening Shot", "Character Beat", "Action Beat", "Final Frame")
+        multi_image_modes = ("Scene Reveal", "Action Beat")
+        if len(analyses) == 1:
+            plan = [(0, mode) for mode in single_image_modes]
+        elif len(analyses) == 2:
+            plan = [(image_index, mode) for image_index in range(2) for mode in multi_image_modes]
+        else:
+            plan = [(image_index, "Scene Reveal") for image_index in range(len(analyses))]
+
+        while len(plan) < 3:
+            plan.append((len(plan) % len(analyses), single_image_modes[len(plan) % len(single_image_modes)]))
+
+        for index, (image_index, mode) in enumerate(plan[:MAX_IMAGE_UPLOADS]):
+            analysis = analyses[image_index]
+            speaker, role, _kind = cast[index % len(cast)]
+            object_phrase = ", ".join(analysis.objects[:3])
+            if mode == "Opening Shot":
+                dialogue = f"This {analysis.scene} sets the world for {title}."
+                caption = f"Detected {analysis.background}, {object_phrase}, and a {analysis.mood} mood."
+            elif mode == "Character Beat":
+                dialogue = f"The focus feels like {analysis.expression}."
+                caption = f"Cominote keeps the full {analysis.orientation} image visible while adding comic polish."
+            elif mode == "Action Beat":
+                dialogue = f"The action reads as {analysis.action}."
+                caption = f"Bold outlines, theme colors, and motion accents turn the image into a comic panel."
+            else:
+                dialogue = f"{theme_title} style gives this moment a finished comic-page look."
+                caption = guidance[:180] if guidance else f"Scene cue: {analysis.scene}; background cue: {analysis.background}."
+
+            scenes.append(
+                Scene(
+                    title=mode,
+                    speaker=speaker,
+                    role=role,
+                    dialogue=self._shorten_text(dialogue, width=118),
+                    caption=self._shorten_text(caption, width=148),
+                    background=backgrounds[index % len(backgrounds)],
+                    focus=analysis.scene.title(),
+                )
+            )
+        return scenes
+
     @staticmethod
     def _normalise_whitespace(text: str) -> str:
         return re.sub(r"\s+", " ", (text or "")).strip()
@@ -1074,13 +1911,29 @@ class CominoteEngine:
                 return WordNetLemmatizer().lemmatize(word)
             except LookupError:
                 pass
-        for ending in ("ing", "ed", "es", "s"):
-            if word.endswith(ending) and len(word) > len(ending) + 2:
-                return word[: -len(ending)]
+        if word.endswith("ies") and len(word) > 4:
+            return f"{word[:-3]}y"
+        if word.endswith("ing") and len(word) > 5:
+            return word[:-3]
+        if word.endswith("ed") and len(word) > 4:
+            return word[:-2]
+        if word.endswith(("ches", "shes", "sses", "xes", "zes")) and len(word) > 5:
+            return word[:-2]
+        if word.endswith("s") and not word.endswith(("ics", "ss", "us")) and len(word) > 3:
+            return word[:-1]
         return word
 
     def _concepts(self, text: str, sentences: list[str], subject: str) -> list[Concept]:
-        stop = self._stopwords()
+        stop = self._stopwords() | {
+            "study",
+            "note",
+            "lesson",
+            "overview",
+            "detail",
+            "learning",
+            "point",
+            "key",
+        }
         sentence_terms = []
         totals: Counter[str] = Counter()
 
@@ -1837,7 +2690,7 @@ class CominoteEngine:
 
     @staticmethod
     def _sentence_snippet(sentence: str) -> str:
-        return textwrap.shorten(ComiNoteEngine._normalise_whitespace(sentence), width=86, placeholder="...")
+        return textwrap.shorten(CominoteEngine._normalise_whitespace(sentence), width=86, placeholder="...")
 
     def _story_cast(
         self,
@@ -3944,6 +4797,256 @@ class CominoteEngine:
         info_width, _ = self._text_size(draw, info_text, info_font)
         draw.text((x + w - info_width - 22, y + h - 23), info_text, font=info_font, fill="#11111188")
 
+    def _stylize_image_for_theme(
+        self,
+        source_image: Any,
+        visual: dict[str, Any],
+        panel_theme: dict[str, str],
+    ) -> Any:
+        theme_profile = visual.get("theme_profile") or {}
+        theme_slug = str(theme_profile.get("slug") or "").lower()
+        image = source_image.convert("RGB").copy()
+
+        factors = {
+            "anime": (1.32, 1.18, 1.28, 4),
+            "superhero": (1.42, 1.32, 1.35, 4),
+            "manga": (0.15, 1.42, 1.5, 3),
+            "fantasy": (1.24, 1.16, 1.2, 4),
+            "pixar": (1.2, 1.12, 1.18, 5),
+            "cartoon_kids": (1.36, 1.18, 1.22, 4),
+            "horror": (0.62, 1.28, 1.32, 3),
+        }
+        color_factor, contrast_factor, sharpness_factor, poster_bits = factors.get(
+            theme_slug,
+            factors["cartoon_kids"],
+        )
+
+        if theme_slug in {"manga", "horror"}:
+            gray = ImageOps.grayscale(image)
+            image = ImageOps.colorize(
+                gray,
+                black="#151515",
+                white=self._blend_hex(panel_theme["surface"], "#ffffff", 0.24),
+            ).convert("RGB")
+        else:
+            image = ImageEnhance.Color(image).enhance(color_factor)
+        image = ImageEnhance.Contrast(image).enhance(contrast_factor)
+        image = ImageEnhance.Sharpness(image).enhance(sharpness_factor)
+        image = ImageOps.posterize(image, poster_bits)
+
+        if ImageFilter is not None:
+            edges = source_image.convert("L").filter(ImageFilter.FIND_EDGES)
+            threshold = 42 if theme_slug != "manga" else 28
+            edge_mask = edges.point(lambda value: 190 if value > threshold else 0).convert("L")
+            line_color = "#111111" if theme_slug in {"manga", "superhero", "horror"} else panel_theme["accent"]
+            line_layer = Image.new("RGB", image.size, line_color)
+            image = Image.composite(line_layer, image, edge_mask)
+        return image
+
+    def _paste_contained_image(
+        self,
+        base_img: Any,
+        draw,
+        source_image: Any,
+        rect: tuple[int, int, int, int],
+        *,
+        fill: str,
+        accent: str,
+    ) -> None:
+        x1, y1, x2, y2 = rect
+        if x2 <= x1 + 10 or y2 <= y1 + 10:
+            return
+        draw.rounded_rectangle((x1 + 5, y1 + 6, x2 + 5, y2 + 6), radius=12, fill="#11111144")
+        draw.rounded_rectangle((x1, y1, x2, y2), radius=12, fill=fill, outline="#111111", width=3)
+        draw.rounded_rectangle((x1 + 7, y1 + 7, x2 - 7, y2 - 7), radius=8, outline=accent, width=2)
+
+        pad = 14
+        canvas_w = max(1, x2 - x1 - pad * 2)
+        canvas_h = max(1, y2 - y1 - pad * 2)
+        art = source_image.copy()
+        art.thumbnail((canvas_w, canvas_h), Image.Resampling.LANCZOS)
+        paste_x = x1 + pad + (canvas_w - art.width) // 2
+        paste_y = y1 + pad + (canvas_h - art.height) // 2
+        base_img.paste(art, (paste_x, paste_y))
+        draw.rounded_rectangle((paste_x, paste_y, paste_x + art.width, paste_y + art.height), radius=6, outline="#111111", width=2)
+
+    def _image_panel_regions(
+        self,
+        px: int,
+        py: int,
+        pw: int,
+        ph: int,
+        header_h: int,
+        caption_h: int,
+    ) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int], int]:
+        content_top = py + header_h + 14
+        caption_y1 = py + ph - caption_h - 12
+        content_bottom = caption_y1 - 14
+        inner_x1 = px + 16
+        inner_x2 = px + pw - 16
+
+        if pw >= 620:
+            image_x2 = px + int(pw * 0.64)
+            image_rect = (inner_x1, content_top, image_x2, content_bottom)
+            bubble_rect = (image_x2 + 16, content_top + 8, inner_x2, content_bottom - 8)
+        else:
+            content_h = max(120, content_bottom - content_top)
+            image_h = max(92, int(content_h * 0.58))
+            image_rect = (inner_x1, content_top, inner_x2, min(content_bottom - 74, content_top + image_h))
+            bubble_rect = (inner_x1 + 8, image_rect[3] + 12, inner_x2 - 8, content_bottom)
+        return image_rect, bubble_rect, caption_y1
+
+    def _draw_palette_swatch_strip(
+        self,
+        draw,
+        palette: list[str],
+        x: int,
+        y: int,
+        *,
+        max_width: int,
+    ) -> None:
+        swatch_size = 18
+        gap = 5
+        for index, color in enumerate(palette[:5]):
+            sx = x + index * (swatch_size + gap)
+            if sx + swatch_size > x + max_width:
+                break
+            draw.rounded_rectangle((sx, y, sx + swatch_size, y + swatch_size), radius=5, fill=self._safe_hex(color, "#ffd93d"), outline="#111111", width=2)
+
+    def _draw_image_comic_panel(
+        self,
+        img,
+        draw,
+        px: int,
+        py: int,
+        pw: int,
+        ph: int,
+        scene: Scene,
+        visual: dict[str, Any],
+        source_image: Any,
+        analysis: ImageComicAnalysis,
+        page_palette: dict[str, str],
+        style_record: dict[str, Any],
+        index: int,
+    ) -> None:
+        panel_theme = self._panel_theme(page_palette, visual)
+        theme_profile = visual.get("theme_profile") or {}
+        layout_style = str(style_record.get("layout_style") or theme_profile.get("layout_style") or "balanced_grid")
+        title_family = str(style_record.get("title_font_family") or "display")
+        body_family = str(style_record.get("body_font_family") or "sans")
+        panel_radius = 8 if layout_style == "manga_cascade" else 10
+        panel_surface = self._blend_hex(panel_theme["surface"], "#ffffff", 0.2)
+        panel_surface_alt = self._blend_hex(panel_theme["surface_alt"], "#ffffff", 0.3)
+
+        draw.rounded_rectangle((px + 6, py + 6, px + pw + 6, py + ph + 6), radius=panel_radius, fill="#11111144")
+        self._gradient_rect(img, px, py, px + pw, py + ph, panel_surface, panel_surface_alt)
+        self._draw_page_halftone(draw, px + 8, py + 8, px + pw - 8, py + ph - 8, panel_theme["accent"], density=20, dot_r=1.0, opacity=0.032)
+        draw.rounded_rectangle((px, py, px + pw, py + ph), radius=panel_radius, outline="#111111", width=4)
+        draw.rounded_rectangle((px + 5, py + 5, px + pw - 5, py + ph - 5), radius=max(4, panel_radius - 4), outline="#ffffffaa", width=1)
+
+        header_h = 42 if ph >= 300 else 36
+        self._gradient_rect(img, px + 4, py + 4, px + pw - 4, py + header_h, panel_theme["accent"], panel_theme["accent_alt"], vertical=False)
+        draw.rectangle((px + 4, py + 4, px + pw - 4, py + header_h), outline="#111111", width=1)
+        draw.line([(px + 4, py + header_h), (px + pw - 4, py + header_h)], fill="#111111", width=2)
+
+        badge_size = 26
+        badge_x = px + 14
+        badge_y = py + 8
+        badge_font = self._font(14, bold=True, family=body_family)
+        draw.ellipse((badge_x, badge_y, badge_x + badge_size, badge_y + badge_size), fill="#ffffff", outline="#111111", width=2)
+        draw.text((badge_x + badge_size // 2, badge_y + badge_size // 2), str(index + 1), font=badge_font, fill="#111111", anchor="mm")
+
+        title_text, title_font = self._fit_text_block(
+            draw,
+            scene.title.upper(),
+            max(80, pw - 92),
+            21,
+            start_size=20,
+            min_size=11,
+            bold=True,
+            family=title_family,
+            max_lines=1,
+        )
+        draw.text((px + 50, py + 11), title_text, font=title_font, fill="#ffffff")
+
+        caption_preview, caption_font = self._fit_text_block(
+            draw,
+            scene.caption,
+            max(90, pw - 64),
+            78,
+            start_size=18,
+            min_size=14,
+            bold=True,
+            family=body_family,
+            spacing=4,
+            max_lines=2,
+        )
+        _caption_w, caption_text_h = self._text_size(draw, caption_preview, caption_font, spacing=4)
+        caption_h = self._clamp(caption_text_h + 40, 62, 98 if ph >= 320 else 84)
+        image_rect, bubble_rect, caption_y1 = self._image_panel_regions(px, py, pw, ph, header_h, caption_h)
+
+        styled = self._stylize_image_for_theme(source_image, visual, panel_theme)
+        self._paste_contained_image(
+            img,
+            draw,
+            styled,
+            image_rect,
+            fill=self._blend_hex(panel_theme["surface"], "#ffffff", 0.35),
+            accent=panel_theme["accent_alt"],
+        )
+        styled.close()
+
+        if image_rect[2] - image_rect[0] >= 170:
+            self._draw_palette_swatch_strip(
+                draw,
+                analysis.palette,
+                image_rect[0] + 16,
+                image_rect[1] + 15,
+                max_width=image_rect[2] - image_rect[0] - 32,
+            )
+
+        self._draw_dataset_speech_bubble(
+            draw,
+            visual.get("bubble") or {},
+            bubble_rect[0],
+            bubble_rect[1],
+            bubble_rect[2],
+            bubble_rect[3],
+            scene.dialogue,
+            panel_theme,
+            body_family,
+            speaker_anchor=(image_rect[2] - 18, image_rect[1] + max(30, (image_rect[3] - image_rect[1]) // 2)),
+        )
+
+        name_text = (visual.get("character") or {}).get("name") or scene.speaker
+        badge_label, name_font = self._fit_text_block(
+            draw,
+            name_text.upper(),
+            max(90, image_rect[2] - image_rect[0] - 30),
+            13,
+            start_size=11,
+            min_size=8,
+            bold=True,
+            family=body_family,
+            max_lines=1,
+        )
+        name_y1 = max(image_rect[1] + 12, image_rect[3] - 30)
+        badge_w = self._text_size(draw, badge_label, name_font)[0] + 18
+        badge_x2 = min(image_rect[2] - 12, image_rect[0] + 12 + badge_w)
+        draw.rounded_rectangle((image_rect[0] + 12, name_y1, badge_x2, name_y1 + 20), radius=8, fill=panel_theme["accent"], outline="#111111", width=2)
+        draw.text((image_rect[0] + 21, name_y1 + 2), badge_label, font=name_font, fill="#ffffff")
+
+        self._draw_dataset_caption(
+            draw,
+            px + 12,
+            caption_y1,
+            px + pw - 12,
+            py + ph - 12,
+            scene.caption,
+            panel_theme,
+            body_family,
+        )
+
     def _draw_dataset_panel(
         self,
         img,
@@ -5157,6 +6260,131 @@ class CominoteEngine:
                 preview.save(image_path, format="PNG", dpi=(300, 300))
         return page_paths
 
+    def _render_image_comic(
+        self,
+        *,
+        image_path: Path,
+        title: str,
+        subject: str,
+        scenes: list[Scene],
+        visual_plan: dict[str, Any],
+        source_images: list[Any],
+        analyses: list[ImageComicAnalysis],
+    ) -> list[Path]:
+        if Image is None or ImageDraw is None or ImageFont is None:
+            raise DependencyError("Comic rendering needs Pillow installed in the Python environment.")
+
+        comic_id = image_path.stem
+        page_dir = self.output_dir / f"{comic_id}_pages"
+        page_dir.mkdir(parents=True, exist_ok=True)
+        page_indices = self._paginate_story_indices(len(scenes))
+        page_paths: list[Path] = []
+        page_count = len(page_indices)
+
+        for page_index, page in enumerate(page_indices):
+            page_path = page_dir / f"{comic_id}-page-{page_index + 1:03d}.png"
+            self._render_image_page(
+                image_path=page_path,
+                title=title,
+                subject=subject,
+                scenes=[scenes[index] for index in page],
+                panel_visuals=[visual_plan["panels"][index] for index in page],
+                visual_plan=visual_plan,
+                source_images=source_images,
+                analyses=analyses,
+                page_number=page_index + 1,
+                page_count=page_count,
+                panel_start_index=page[0] if page else 0,
+            )
+            page_paths.append(page_path)
+
+        if page_paths:
+            with Image.open(page_paths[0]) as preview:
+                preview.save(image_path, format="PNG", dpi=(300, 300))
+        return page_paths
+
+    def _render_image_page(
+        self,
+        *,
+        image_path: Path,
+        title: str,
+        subject: str,
+        scenes: list[Scene],
+        panel_visuals: list[dict[str, Any]],
+        visual_plan: dict[str, Any],
+        source_images: list[Any],
+        analyses: list[ImageComicAnalysis],
+        page_number: int,
+        page_count: int,
+        panel_start_index: int,
+    ) -> None:
+        palette = STYLE_LIBRARY[visual_plan["palette_style"]]
+        style_record = visual_plan["style"]
+        layout_style = str(style_record.get("layout_style") or visual_plan["theme_profile"].get("layout_style") or "balanced_grid")
+        margin = 36
+        gutter = 24
+        layout = self._layout_boxes(len(scenes), margin, gutter, layout_style, page_number=page_number)
+        max_x = max(lx + lw for lx, ly, lw, lh, _ in layout)
+        max_y = max(ly + lh for lx, ly, lw, lh, _ in layout)
+        show_title = page_number == 1
+        title_h = 132 if show_title else 0
+        footer_h = 34
+        width = max_x + margin
+        header_space = title_h + gutter if show_title else 0
+        height = header_space + max_y + margin * 2 + footer_h
+
+        img = Image.new("RGB", (width, height), _hex_to_rgb(palette["page"]))
+        draw = ImageDraw.Draw(img)
+        self._gradient_rect(
+            img,
+            0,
+            0,
+            width,
+            height,
+            self._blend_hex(palette["page"], "#ffffff", 0.14),
+            self._blend_hex(palette["panel_bot"], "#ffffff", 0.32),
+        )
+        self._draw_page_halftone(draw, 0, 0, width, height, palette["accent"], density=26, dot_r=1.3, opacity=0.018)
+        draw.rounded_rectangle((10, 10, width - 10, height - 10), radius=18, outline="#111111", width=4)
+        draw.rounded_rectangle((18, 18, width - 18, height - 18), radius=12, outline="#ffffffbb", width=1)
+
+        if show_title:
+            self._draw_dataset_title_banner(
+                img,
+                draw,
+                margin,
+                margin,
+                width - margin * 2,
+                title_h,
+                title,
+                "image comic",
+                palette,
+                style_record,
+                visual_plan.get("cast_sources", []),
+            )
+
+        panel_y_offset = margin + header_space
+        for lx, ly, lw, lh, scene_idx in layout:
+            global_index = panel_start_index + scene_idx
+            source_index = global_index % max(len(source_images), 1)
+            self._draw_image_comic_panel(
+                img,
+                draw,
+                lx,
+                ly + panel_y_offset,
+                lw,
+                lh,
+                scenes[scene_idx],
+                panel_visuals[scene_idx],
+                source_images[source_index],
+                analyses[source_index],
+                palette,
+                style_record,
+                global_index,
+            )
+
+        img.save(image_path, format="PNG", dpi=(300, 300))
+
     def _render_page(
         self,
         *,
@@ -5937,6 +7165,8 @@ class CominoteEngine:
                 "/Library/Fonts/Nunito-Bold.ttf" if bold else "/Library/Fonts/Nunito-Regular.ttf",
                 "/Library/Fonts/Poppins-Bold.ttf" if bold else "/Library/Fonts/Poppins-Regular.ttf",
                 "/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial Rounded Bold.ttf",
+                "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+                "/System/Library/Fonts/Helvetica.ttc",
                 "/System/Library/Fonts/Supplemental/Trebuchet MS Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Trebuchet MS.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             ],
@@ -5944,6 +7174,8 @@ class CominoteEngine:
                 "/Library/Fonts/Fredoka-Bold.ttf" if bold else "/Library/Fonts/Fredoka-Regular.ttf",
                 "/System/Library/Fonts/Supplemental/Marker Felt Wide.ttf",
                 "/System/Library/Fonts/Supplemental/Chalkboard Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Chalkboard.ttf",
+                "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+                "/System/Library/Fonts/Helvetica.ttc",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             ],
             "display": [

@@ -1,13 +1,14 @@
 # Cominote
 
-Cominote is a text-to-comic learning platform that turns educational notes into downloadable comic strips.
+Cominote is a text-and-OCR-image-to-comic learning platform that turns educational notes, PDFs, and readable study screenshots into downloadable comic strips.
 This build now includes the full mini-project flow described in your documents:
 
-- Firebase Authentication for sign up and login
+- Firebase Authentication for sign up, login, and secure forgot-password reset links
 - A single-page dashboard with Input, Processing Status, and Output panels
 - Theme dataset integration from the `JSON/` folder
 - Flask API endpoints for generation, image retrieval, and downloads
-- `.txt`, `.pdf`, and `.docx` intake
+- `.txt`, `.pdf`, `.docx`, `.jpg`, `.jpeg`, and `.png` intake
+- OCR-based text image conversion with Anime, Marvel, DC, Pokemon, Cartoon, Fantasy, and Sci-Fi art-style choices
 - Background job generation with progress polling for long-running comic builds
 - Chunk-aware concept extraction, relation hints, and multi-panel comic sequencing
 - Programmatic comic rendering with PNG and JPEG export
@@ -19,7 +20,7 @@ This build now includes the full mini-project flow described in your documents:
 - `styles.css` - comic-style responsive layout and dashboard styling
 - `app.js` - Firebase auth, routing, form handling, API calls, history, and output rendering
 - `app.py` - Flask server and REST endpoints
-- `cominote_engine.py` - input validation, text/PDF handling, concept extraction, narrative generation, and comic rendering
+- `cominote_engine.py` - input validation, text/PDF/OCR-image handling, concept extraction, narrative generation, and comic rendering
 - `JSON/` - theme datasets that can now be selected directly from the dashboard
 - `render.yaml` - one-click Render deployment config for the full Flask app
 
@@ -47,13 +48,22 @@ This build now includes the full mini-project flow described in your documents:
 
    `nltk` and `spacy` are optional. The app already includes fallback logic, so the core project works without them.
 
-4. Start the app:
+4. Optional OCR fallback for Linux/Windows deployments:
+
+   ```bash
+   # Install the Tesseract OCR system package for your OS, then optionally:
+   pip install pytesseract
+   ```
+
+   On macOS, Cominote can use the built-in Vision OCR helper at `scripts/ocr_vision.swift`. The image flow validates that uploaded JPG/PNG files contain readable study text before generating a comic.
+
+5. Start the app:
 
    ```bash
    python3 app.py
    ```
 
-5. Open [http://127.0.0.1:5001](http://127.0.0.1:5001)
+6. Open [http://127.0.0.1:5001](http://127.0.0.1:5001)
 
 ## Theme Datasets
 
@@ -136,15 +146,19 @@ Examples:
 
 - `GET /api/themes`
 - `POST /api/generate`
+- `POST /api/generate/images`
+- `POST /api/upload-image`
 - `GET /api/jobs/<job_id>`
 - `GET /api/comics/<comic_id>`
 - `GET /api/comics/<comic_id>/image`
 - `GET /api/download/<comic_id>?format=png`
 - `GET /api/download/<comic_id>?format=jpeg`
+- `GET /api/download/<comic_id>?format=pdf`
 
 ## Notes
 
-- Firebase config is kept from the existing prototype so your current auth flow still works.
+- Firebase config is kept from the existing prototype so your current auth flow still works. Forgot-password uses Firebase Auth reset emails and expiry-managed reset links.
 - PDF parsing requires `PyMuPDF`.
 - Comic rendering requires `Pillow`.
+- Text image upload uses OCR. It extracts text from notes, textbook screenshots, and educational images, rejects unclear/no-text images with a clear message, detects the topic, summarizes learning points, then generates a themed comic from the extracted content instead of placing the uploaded bitmap in panels.
 - The NLP layer is designed to run with lightweight heuristics by default and use `spaCy` / `NLTK` when available.

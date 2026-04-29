@@ -726,6 +726,9 @@
     .auth-message { text-align: center; min-height: 22px; padding: 8px 12px; font-weight: 700; font-size: 0.92rem; }
     .auth-message.is-success { color: #155724; }
     .auth-message.is-error { color: #721c24; }
+    .auth-row { display: flex; justify-content: flex-end; margin: -6px 0 14px; position: relative; z-index: 2; }
+    .auth-row .inline-link { width: 100%; min-height: 36px; justify-content: flex-end; padding: 6px 0; }
+    .auth-note { margin: -12px 0 20px; color: #555; font-size: 0.9rem; line-height: 1.5; font-weight: 700; font-family: 'Fredoka', sans-serif; text-align: center; }
 
     /* ─── DASHBOARD ─── */
     .dash-wrap { min-height: 100vh; background: linear-gradient(180deg, #fff4aa 0%, var(--g) 24%, #fffaf0 100%); }
@@ -784,7 +787,18 @@
     .theme-character-copy strong { font-family: 'Bangers', cursive; font-size: 1.6rem; letter-spacing: 1px; }
     .theme-character-copy p { font-family: 'Fredoka', sans-serif; font-size: 0.9rem; font-weight: 600; color: #555; line-height: 1.5; }
     .theme-feature-strip { display: flex; flex-wrap: wrap; gap: 8px; }
-    .upload-card { display: block; border: 3px dashed var(--b); background: linear-gradient(135deg, var(--y), #fff4a3); padding: 16px; margin-bottom: 8px; transition: transform 0.15s, box-shadow 0.15s, background 0.15s; cursor: pointer; border-radius: 8px; box-shadow: 4px 4px 0 var(--b), 0 12px 26px rgba(244, 99, 30, 0.14); }
+    .upload-section { display: grid; gap: 10px; }
+    .upload-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .upload-mode-btn {
+      min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border: 3px solid var(--b); background: linear-gradient(180deg, #ffffff, #fff8dd);
+      color: var(--b); font-family: 'Bangers', cursive; letter-spacing: 1px; font-size: 1.05rem;
+      box-shadow: 4px 4px 0 var(--b); border-radius: 8px; transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    .upload-mode-btn:hover, .upload-mode-btn.is-active { transform: translate(-1px,-1px); box-shadow: 5px 5px 0 var(--b); background: linear-gradient(180deg, var(--y), #fff4a3); }
+    .upload-panel { display: none; gap: 10px; }
+    .upload-panel.is-active { display: grid; }
+    .upload-card { display: block; border: 3px dashed var(--b); background: linear-gradient(135deg, var(--y), #fff4a3); padding: 16px; margin-bottom: 2px; transition: transform 0.15s, box-shadow 0.15s, background 0.15s; cursor: pointer; border-radius: 8px; box-shadow: 4px 4px 0 var(--b), 0 12px 26px rgba(244, 99, 30, 0.14); }
     .upload-card input { display: none; }
     .upload-card.is-dragging { background: #D4F7E0; transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--b); }
     .upload-card.has-file { background: #D4F7E0; border-style: solid; }
@@ -792,6 +806,22 @@
     .upload-icon { font-size: 2.2rem; }
     .upload-text strong { display: block; font-family: 'Bangers', cursive; font-size: 1.2rem; letter-spacing: 1px; }
     .upload-text span { font-size: 0.85rem; color: #555; font-family: 'Fredoka', sans-serif; font-weight: 600; }
+    .image-upload-note { margin-top: -2px; color: #555; line-height: 1.45; }
+    .image-preview-list {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px;
+      margin: 2px 0 4px;
+    }
+    .image-preview-list[hidden] { display: none; }
+    .image-preview-item {
+      margin: 0; border: 2px solid var(--b); background: linear-gradient(180deg, #ffffff, #fff8dd);
+      border-radius: 8px; overflow: hidden; box-shadow: 3px 3px 0 var(--b);
+    }
+    .image-preview-item img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #fff; }
+    .image-preview-item figcaption {
+      padding: 6px 8px; font-size: 0.72rem; line-height: 1.25; font-weight: 800;
+      font-family: 'Fredoka', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .image-theme-field { margin: 4px 0 0; }
     .composer-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
     .large-btn { font-size: 1.2rem; padding: 14px 24px; flex: 1; }
     .btn-secondary {
@@ -942,6 +972,7 @@
       .dash-body { padding: 24px 16px; }
       .summary-board { grid-template-columns: 1fr; }
       .theme-summary-hero { grid-template-columns: 1fr; }
+      .upload-switch { grid-template-columns: 1fr; }
       .comic-preview { min-height: 300px; padding: 10px; }
       .comic-page-strip { justify-content: center; }
     }
@@ -1378,10 +1409,33 @@
         <p class="sub">Log in to your account</p>
         <div class="fg"><label>Email</label><input id="login-email" type="email" placeholder="you@example.com"></div>
         <div class="fg"><label>Password</label><input id="login-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()"></div>
+        <div class="auth-row">
+          <button type="button" class="inline-link" onclick="showPage('pg-reset-password')">Forgot Password?</button>
+        </div>
         <button class="btn-full" type="button" onclick="doLogin()">LOG IN</button>
         <p id="login-msg" class="auth-message"></p>
         <div class="divider">OR</div>
         <p class="auth-switch">No account? <button type="button" class="inline-link" onclick="showPage('pg-signup')">Sign up free</button></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ RESET PASSWORD PAGE ═══════════════ -->
+<div id="pg-reset-password" class="page">
+  <div class="auth-wrap">
+    <button class="back-btn" type="button" onclick="showPage('pg-login')">← Back to Login</button>
+    <div class="auth-center">
+      <div class="auth-card">
+        <div class="logo-top">
+          <div class="logo-box logo-static" style="display:inline-block;"><span>COMINOTE</span></div>
+        </div>
+        <h2>RESET PASSWORD</h2>
+        <p class="auth-note">Enter your registered email and Cominote will send a secure reset link.</p>
+        <div class="fg"><label>Email</label><input id="reset-email" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter') doPasswordReset()"></div>
+        <button class="btn-full" type="button" onclick="doPasswordReset()">SEND RESET LINK</button>
+        <p id="reset-msg" class="auth-message"></p>
+        <p class="auth-switch">Remembered it? <button type="button" class="inline-link" onclick="showPage('pg-login')">Log in</button></p>
       </div>
     </div>
   </div>
@@ -1428,7 +1482,7 @@
     <div class="dash-body">
       <div class="dash-header">
         <h2>CREATE YOUR COMIC</h2>
-        <p class="welcome">✨ Select a theme, add your study notes or upload a PDF, and watch Cominote transform them into a vibrant animated comic strip</p>
+        <p class="welcome">✨ Select a theme, add your study notes, upload a PDF, or convert readable text images into a vibrant animated comic strip</p>
       </div>
 
       <div class="dash-grid">
@@ -1495,16 +1549,50 @@
             </label>
           </div>
 
-          <div class="field-group">
-            <label class="upload-card modern-upload" for="notes-file">
-              <div class="upload-icon">📤</div>
-              <div class="upload-text">
-                <strong>Upload Your File</strong>
-                <span>PDF, DOCX, or TXT (max 50 MB) — or paste text above</span>
-              </div>
-              <input id="notes-file" type="file" accept=".txt,.pdf,.docx">
-            </label>
-            <p id="file-feedback" class="inline-feedback">No file selected • Ready to upload</p>
+          <div class="field-group upload-section">
+            <span class="field-label">📤 Upload Source</span>
+            <div class="upload-switch" role="tablist" aria-label="Upload source">
+              <button id="upload-mode-doc" class="upload-mode-btn is-active" type="button" role="tab" aria-selected="true" onclick="setUploadMode('document')">📄 Upload PDF</button>
+              <button id="upload-mode-image" class="upload-mode-btn" type="button" role="tab" aria-selected="false" onclick="setUploadMode('images')">🖼 Upload Text Image</button>
+            </div>
+
+            <div id="document-upload-panel" class="upload-panel is-active">
+              <label id="document-upload-card" class="upload-card modern-upload" for="notes-file">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">
+                  <strong>Upload PDF</strong>
+                  <span>PDF, DOCX, or TXT (max 50 MB) — or paste text above</span>
+                </div>
+                <input id="notes-file" type="file" accept=".txt,.pdf,.docx,application/pdf">
+              </label>
+              <p id="file-feedback" class="inline-feedback">No file selected • Ready to upload</p>
+            </div>
+
+            <div id="image-upload-panel" class="upload-panel">
+              <label id="image-upload-card" class="upload-card modern-upload" for="image-files">
+                <div class="upload-icon">🖼</div>
+                <div class="upload-text">
+                  <strong>Upload Text Image</strong>
+                  <span>JPG, JPEG, or PNG • single or multiple study images (15 MB each)</span>
+                </div>
+                <input id="image-files" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple>
+              </label>
+              <p class="inline-feedback image-upload-note">Upload screenshots, notes, textbook pages, or images containing readable text.</p>
+              <div id="image-preview-list" class="image-preview-list" hidden></div>
+              <p id="image-feedback" class="inline-feedback">No text image selected • Ready to read</p>
+              <label class="field image-theme-field">
+                <span class="field-label">🎬 Text Image Comic Theme</span>
+                <select id="image-theme-select" class="theme-selector">
+                  <option value="anime">Anime</option>
+                  <option value="marvel">Marvel</option>
+                  <option value="dc">DC</option>
+                  <option value="pokemon">Pokemon</option>
+                  <option value="cartoon">Cartoon</option>
+                  <option value="fantasy">Fantasy</option>
+                  <option value="space">Sci-Fi</option>
+                </select>
+              </label>
+            </div>
           </div>
 
           <div class="composer-actions">
@@ -1556,6 +1644,8 @@
             </div>
             <div class="output-actions">
               <button id="download-pdf" class="btn-primary" type="button" disabled onclick="downloadComic('pdf')">⬇ Download PDF</button>
+              <button id="download-png" class="btn-outline" type="button" disabled onclick="downloadComic('png')">PNG</button>
+              <button id="download-jpeg" class="btn-outline" type="button" disabled onclick="downloadComic('jpeg')">JPEG</button>
             </div>
           </div>
 
@@ -1571,7 +1661,7 @@
   </div>
 </div>
 
-<script src="/config.js?v=20260428-premium-comic-upgrade"></script>
-<script type="module" src="/app.js?v=20260428-premium-comic-upgrade"></script>
+<script src="/config.js?v=20260429-ocr-text-image-comic"></script>
+<script type="module" src="/app.js?v=20260429-ocr-text-image-comic"></script>
 </body>
 </html>

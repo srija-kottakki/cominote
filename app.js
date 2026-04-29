@@ -3,6 +3,7 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
@@ -28,6 +29,8 @@ const auth = getAuth(firebaseApp);
 const COMINOTE_CONFIG = window.COMINOTE_CONFIG || {};
 const API_BASE = String(COMINOTE_CONFIG.apiBase || "").replace(/\/$/, "");
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+const MAX_IMAGE_COUNT = 12;
 const MAX_TEXT_CHARS = 25_000_000;
 const JOB_POLL_MS = 1200;
 
@@ -38,7 +41,7 @@ const STATUS_STEPS = [
   },
   {
     title: "Reading Content",
-    text: "Extracting the main ideas from your text or PDF.",
+    text: "Extracting the main ideas from your text, PDF, or readable text image.",
   },
   {
     title: "Building Comic",
@@ -185,6 +188,16 @@ const THEME_CHARACTER_FALLBACKS = [
   },
 ];
 
+const IMAGE_THEME_OPTIONS = {
+  anime: "naruto",
+  marvel: "marvel",
+  dc: "dc",
+  pokemon: "pokemon",
+  cartoon: "cartoon",
+  fantasy: "fantasy",
+  space: "space",
+};
+
 const state = {
   currentComic: null,
   currentJobId: null,
@@ -193,6 +206,8 @@ const state = {
   history: [],
   themes: [],
   selectedThemeSlug: "",
+  uploadMode: "document",
+  imagePreviewUrls: [],
 };
 
 const els = {};
@@ -208,6 +223,8 @@ function cacheEls() {
     "login-email",
     "login-pass",
     "login-msg",
+    "reset-email",
+    "reset-msg",
     "signup-name",
     "signup-email",
     "signup-pass",
@@ -239,8 +256,16 @@ function cacheEls() {
     "theme-size-pill",
     "notes-input",
     "notes-file",
+    "image-files",
+    "image-theme-select",
     "char-count",
     "file-feedback",
+    "image-feedback",
+    "image-preview-list",
+    "upload-mode-doc",
+    "upload-mode-image",
+    "document-upload-panel",
+    "image-upload-panel",
     "generate-btn",
     "status-progress",
     "status-title",
@@ -259,6 +284,8 @@ function cacheEls() {
     "preview-placeholder-title",
     "preview-placeholder-text",
     "download-pdf",
+    "download-png",
+    "download-jpeg",
     "history-list",
   ];
 
@@ -267,10 +294,18 @@ function cacheEls() {
   });
 
   els.statusSteps = Array.from(document.querySelectorAll(".status-step"));
-  els.uploadCard = document.querySelector(".upload-card");
+  els.documentUploadCard = document.getElementById("document-upload-card");
+  els.imageUploadCard = document.getElementById("image-upload-card");
 }
 
 function showPage(id) {
+  if (id === "pg-reset-password") {
+    const loginEmail = els["login-email"]?.value?.trim() || "";
+    if (loginEmail && els["reset-email"]) {
+      els["reset-email"].value = loginEmail;
+    }
+    setAuthMessage("reset-msg", null, "");
+  }
   document.querySelectorAll(".page").forEach((page) => page.classList.remove("active"));
   const target = document.getElementById(id);
   if (!target) return;
@@ -284,6 +319,15 @@ function setAuthMessage(id, type, text) {
   node.textContent = text || "";
   node.className = "auth-message";
   if (type) node.classList.add(`is-${type}`);
+}
+
+function showResetPassword() {
+  const loginEmail = els["login-email"]?.value?.trim() || "";
+  if (loginEmail && els["reset-email"]) {
+    els["reset-email"].value = loginEmail;
+  }
+  setAuthMessage("reset-msg", null, "");
+  showPage("pg-reset-password");
 }
 
 function setStatus(index, phase = "idle") {
@@ -324,7 +368,7 @@ function resetStatusBoard() {
   state.currentJobId = null;
   els["status-progress"].style.width = "0%";
   els["status-title"].textContent = "Ready to begin";
-  els["status-text"].textContent = "Choose a theme, add text or upload a file, and generate the comic PDF.";
+  els["status-text"].textContent = "Choose a theme, add text, upload a PDF, or upload readable text images, then generate the comic PDF.";
   els["summary-panels"].textContent = "0";
   els["summary-source"].textContent = "Idle";
   els["summary-chunks"].textContent = "0";
@@ -722,6 +766,9 @@ function setSelectedTheme(slug = "", options = {}) {
   if (els["theme-select"] && els["theme-select"].value !== state.selectedThemeSlug) {
     els["theme-select"].value = state.selectedThemeSlug;
   }
+  if (options.syncImage !== false) {
+    syncImageThemeFromMainTheme(state.selectedThemeSlug);
+  }
 
   const theme = currentTheme();
   const activeComicTheme = state.currentComic?.meta?.theme_slug || "";
@@ -926,6 +973,8 @@ function renderComic(comic) {
       els["comic-caption"].textContent =
         "The generated image could not be loaded, so the live theme preview is shown instead. You can still retry generation or use the PDF download if available.";
       els["download-pdf"].disabled = !comic.downloads?.pdf;
+      els["download-png"].disabled = !comic.downloads?.png;
+      els["download-jpeg"].disabled = !comic.downloads?.jpeg;
     },
     { once: true }
   );
@@ -939,8 +988,10 @@ function renderComic(comic) {
     : comic.meta?.theme_profile_label || comic.subject;
   const pageCount = Number(comic.page_count || comic.meta?.page_count || 1);
   const pageLabel = pageCount === 1 ? "1 page" : `${pageCount} pages`;
-  els["comic-caption"].textContent = `${themeLabel} • ${pageLabel} • ${comic.panel_count} panels • PDF ready for download`;
-  els["download-pdf"].disabled = false;
+  els["comic-caption"].textContent = `${themeLabel} • ${pageLabel} • ${comic.panel_count} panels • PDF and image downloads ready`;
+  els["download-pdf"].disabled = !comic.downloads?.pdf;
+  els["download-png"].disabled = !comic.downloads?.png;
+  els["download-jpeg"].disabled = !comic.downloads?.jpeg;
 }
 
 function resetOutput() {
@@ -960,6 +1011,8 @@ function resetOutput() {
     ? `${theme.title} preview loaded. Generate the full comic PDF to replace this panel.`
     : "Your generated comic preview and PDF download will appear here.";
   els["download-pdf"].disabled = true;
+  els["download-png"].disabled = true;
+  els["download-jpeg"].disabled = true;
 }
 
 function syncUser(user) {
@@ -1001,30 +1054,145 @@ function updateCharCount() {
   els["char-count"].style.color = ratio > 0.9 ? "#e63946" : ratio > 0.6 ? "#f4631e" : "#555";
 }
 
-function updateUploadCardState(hasFile) {
-  if (els.uploadCard) {
-    els.uploadCard.classList.toggle("has-file", hasFile);
+function updateUploadCardState(kind, hasFile) {
+  const card = kind === "images" ? els.imageUploadCard : els.documentUploadCard;
+  if (card) {
+    card.classList.toggle("has-file", hasFile);
+  }
+}
+
+function clearImagePreviews() {
+  state.imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+  state.imagePreviewUrls = [];
+  if (!els["image-preview-list"]) return;
+  els["image-preview-list"].replaceChildren();
+  els["image-preview-list"].hidden = true;
+}
+
+function renderImagePreviews(files) {
+  clearImagePreviews();
+  if (!els["image-preview-list"] || !files.length) return;
+
+  const fragment = document.createDocumentFragment();
+  files.slice(0, MAX_IMAGE_COUNT).forEach((file, index) => {
+    const url = URL.createObjectURL(file);
+    state.imagePreviewUrls.push(url);
+
+    const item = document.createElement("figure");
+    item.className = "image-preview-item";
+    const image = document.createElement("img");
+    image.src = url;
+    image.alt = `Text image preview ${index + 1}`;
+    image.loading = "lazy";
+    const caption = document.createElement("figcaption");
+    caption.textContent = file.name;
+    item.append(image, caption);
+    fragment.append(item);
+  });
+
+  els["image-preview-list"].append(fragment);
+  els["image-preview-list"].hidden = false;
+}
+
+function imageThemeToThemeSlug(value) {
+  return IMAGE_THEME_OPTIONS[value] || value || "";
+}
+
+function syncImageThemeFromMainTheme(slug) {
+  if (!els["image-theme-select"] || !slug) return;
+  const match = Object.entries(IMAGE_THEME_OPTIONS).find(([, mappedSlug]) => mappedSlug === slug);
+  if (match) {
+    els["image-theme-select"].value = match[0];
+  }
+}
+
+function applyImageThemeSelection() {
+  const mappedSlug = imageThemeToThemeSlug(els["image-theme-select"]?.value || "");
+  if (mappedSlug) {
+    setSelectedTheme(mappedSlug, { resetOutput: true, autofillTitle: true });
+  }
+}
+
+function setUploadMode(mode) {
+  state.uploadMode = mode === "images" ? "images" : "document";
+  const isImages = state.uploadMode === "images";
+
+  els["upload-mode-doc"]?.classList.toggle("is-active", !isImages);
+  els["upload-mode-image"]?.classList.toggle("is-active", isImages);
+  els["upload-mode-doc"]?.setAttribute("aria-selected", String(!isImages));
+  els["upload-mode-image"]?.setAttribute("aria-selected", String(isImages));
+  els["document-upload-panel"]?.classList.toggle("is-active", !isImages);
+  els["image-upload-panel"]?.classList.toggle("is-active", isImages);
+
+  if (isImages) {
+    applyImageThemeSelection();
+    els["generate-btn"].textContent = "GENERATE TEXT IMAGE COMIC PDF";
+    els["status-text"].textContent = "Upload readable study screenshots or note images, choose a theme, and generate the comic PDF.";
+  } else {
+    els["generate-btn"].textContent = "GENERATE COMIC PDF";
+    els["status-text"].textContent = "Choose a theme, add text or upload a PDF, and generate the comic PDF.";
   }
 }
 
 function handleFileSelection() {
   const file = els["notes-file"].files?.[0];
   if (!file) {
-    updateUploadCardState(false);
+    updateUploadCardState("document", false);
     els["file-feedback"].textContent = "No file selected yet.";
     return;
   }
 
   if (file.size > MAX_UPLOAD_BYTES) {
     els["notes-file"].value = "";
-    updateUploadCardState(false);
+    updateUploadCardState("document", false);
     els["file-feedback"].textContent = "Please choose a file smaller than 50 MB.";
     return;
   }
 
-  updateUploadCardState(true);
+  updateUploadCardState("document", true);
   const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
   els["file-feedback"].textContent = `${file.name} selected • ${sizeMb} MB`;
+}
+
+function handleImageSelection() {
+  const files = Array.from(els["image-files"].files || []);
+  if (!files.length) {
+    clearImagePreviews();
+    updateUploadCardState("images", false);
+    els["image-feedback"].textContent = "No text image selected yet.";
+    return;
+  }
+
+  if (files.length > MAX_IMAGE_COUNT) {
+    els["image-files"].value = "";
+    clearImagePreviews();
+    updateUploadCardState("images", false);
+    els["image-feedback"].textContent = `Please choose ${MAX_IMAGE_COUNT} text images or fewer.`;
+    return;
+  }
+
+  const invalidType = files.find((file) => !/\.(jpe?g|png)$/i.test(file.name));
+  if (invalidType) {
+    els["image-files"].value = "";
+    clearImagePreviews();
+    updateUploadCardState("images", false);
+    els["image-feedback"].textContent = "Only JPG, JPEG, and PNG image files are supported.";
+    return;
+  }
+
+  const tooLarge = files.find((file) => file.size > MAX_IMAGE_BYTES);
+  if (tooLarge) {
+    els["image-files"].value = "";
+    clearImagePreviews();
+    updateUploadCardState("images", false);
+    els["image-feedback"].textContent = "Each image must be smaller than 15 MB.";
+    return;
+  }
+
+  renderImagePreviews(files);
+  updateUploadCardState("images", true);
+  const totalMb = (files.reduce((sum, file) => sum + file.size, 0) / (1024 * 1024)).toFixed(2);
+  els["image-feedback"].textContent = `${files.length} text image${files.length === 1 ? "" : "s"} selected • ${totalMb} MB total`;
 }
 
 function clearComposer() {
@@ -1033,8 +1201,13 @@ function clearComposer() {
   populateThemeSelect();
   els["notes-input"].value = "";
   els["notes-file"].value = "";
+  els["image-files"].value = "";
   els["file-feedback"].textContent = "No file selected yet.";
-  updateUploadCardState(false);
+  els["image-feedback"].textContent = "No text image selected yet.";
+  clearImagePreviews();
+  updateUploadCardState("document", false);
+  updateUploadCardState("images", false);
+  setUploadMode("document");
   updateCharCount();
   resetStatusBoard();
   resetOutput();
@@ -1045,6 +1218,7 @@ function mapAuthError(code) {
   const errors = {
     "auth/email-already-in-use": "That email is already registered.",
     "auth/invalid-email": "Please enter a valid email address.",
+    "auth/missing-email": "Please enter your registered email address.",
     "auth/weak-password": "Choose a stronger password with at least 6 characters.",
     "auth/user-not-found": "No account was found for that email.",
     "auth/wrong-password": "Incorrect password. Please try again.",
@@ -1101,6 +1275,29 @@ async function doLogin() {
   }
 }
 
+async function doPasswordReset() {
+  const email = els["reset-email"].value.trim();
+
+  if (!email) {
+    setAuthMessage("reset-msg", "error", "Please enter your registered email address.");
+    return;
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, email, {
+      url: window.location.origin,
+      handleCodeInApp: false,
+    });
+    setAuthMessage("reset-msg", "success", "If that email is registered, a secure reset link is on the way.");
+  } catch (error) {
+    if (error.code === "auth/user-not-found") {
+      setAuthMessage("reset-msg", "success", "If that email is registered, a secure reset link is on the way.");
+      return;
+    }
+    setAuthMessage("reset-msg", "error", mapAuthError(error.code));
+  }
+}
+
 async function doLogout() {
   await signOut(auth);
   clearComposer();
@@ -1114,16 +1311,27 @@ function buildDefaultTitle(theme) {
 async function generateComic() {
   if (!ensureAuth()) return;
 
+  const isImageMode = state.uploadMode === "images";
+  if (isImageMode) {
+    applyImageThemeSelection();
+  }
+
   const theme = currentTheme();
   const text = els["notes-input"].value.trim();
   const file = els["notes-file"].files?.[0];
+  const imageFiles = Array.from(els["image-files"].files || []);
 
   if (!theme) {
     setStatusError("Please choose a theme before generating the comic PDF.");
     return;
   }
 
-  if (!text && !file) {
+  if (isImageMode && !imageFiles.length) {
+    setStatusError("Please upload at least one JPG or PNG text image before generating the comic.");
+    return;
+  }
+
+  if (!isImageMode && !text && !file) {
     setStatusError("Please paste text or upload a file before generating the comic PDF.");
     return;
   }
@@ -1138,6 +1346,23 @@ async function generateComic() {
     return;
   }
 
+  if (isImageMode) {
+    if (imageFiles.length > MAX_IMAGE_COUNT) {
+      setStatusError(`Please choose ${MAX_IMAGE_COUNT} text images or fewer.`);
+      return;
+    }
+    const invalidImage = imageFiles.find((imageFile) => !/\.(jpe?g|png)$/i.test(imageFile.name));
+    if (invalidImage) {
+      setStatusError("Only JPG, JPEG, and PNG image files are supported.");
+      return;
+    }
+    const oversizedImage = imageFiles.find((imageFile) => imageFile.size > MAX_IMAGE_BYTES);
+    if (oversizedImage) {
+      setStatusError("Each image must be smaller than 15 MB.");
+      return;
+    }
+  }
+
   const title = els["project-title"].value.trim() || buildDefaultTitle(theme);
 
   els["generate-btn"].disabled = true;
@@ -1148,7 +1373,9 @@ async function generateComic() {
   applyJobProgress({
     stage: "starting",
     progress: 8,
-    message: "Uploading your content and preparing the themed comic PDF.",
+    message: isImageMode
+      ? "Reading image..."
+      : "Uploading your content and preparing the themed comic PDF.",
   });
 
   try {
@@ -1156,12 +1383,20 @@ async function generateComic() {
     formData.append("title", title);
     formData.append("text", text);
     formData.append("theme_slug", theme.slug);
+    if (isImageMode) {
+      formData.append("image_theme", els["image-theme-select"]?.value || theme.slug);
+    }
     formData.append("user_id", state.user.uid);
     formData.append("user_name", state.user.displayName || "");
     formData.append("async", "1");
-    if (file) formData.append("file", file);
+    if (isImageMode) {
+      imageFiles.forEach((imageFile) => formData.append("images", imageFile));
+    } else if (file) {
+      formData.append("file", file);
+    }
 
-    const response = await fetch(apiUrl("/api/generate"), {
+    const endpoint = isImageMode ? "/api/upload-image" : "/api/generate";
+    const response = await fetch(apiUrl(endpoint), {
       method: "POST",
       body: formData,
     });
@@ -1181,10 +1416,14 @@ async function generateComic() {
     renderComic(payload);
     persistHistoryEntry(payload);
   } catch (error) {
-    setStatusError(error.message || "Comic generation failed.");
+    const message = error.message || "Comic generation failed.";
+    if (isImageMode) {
+      window.alert(message);
+    }
+    setStatusError(message);
   } finally {
     els["generate-btn"].disabled = false;
-    els["generate-btn"].textContent = "GENERATE COMIC PDF";
+    els["generate-btn"].textContent = isImageMode ? "GENERATE TEXT IMAGE COMIC PDF" : "GENERATE COMIC PDF";
     hideComicSkeleton();
   }
 }
@@ -1246,8 +1485,7 @@ async function openHistoryComic(comicId) {
   }
 }
 
-function setupDropzone() {
-  const zone = els.uploadCard;
+function setupDropzone(zone, input, onSelection, { multiple = false } = {}) {
   if (!zone) return;
 
   const activate = () => zone.classList.add("is-dragging");
@@ -1268,31 +1506,38 @@ function setupDropzone() {
   });
 
   zone.addEventListener("drop", (event) => {
-    const file = event.dataTransfer?.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.dataTransfer?.files || []);
+    if (!files.length || !input) return;
     const transfer = new DataTransfer();
-    transfer.items.add(file);
-    els["notes-file"].files = transfer.files;
-    handleFileSelection();
+    files.slice(0, multiple ? MAX_IMAGE_COUNT : 1).forEach((file) => transfer.items.add(file));
+    input.files = transfer.files;
+    onSelection();
   });
 }
 
 function setupEvents() {
   els["notes-input"].addEventListener("input", updateCharCount);
   els["notes-file"].addEventListener("change", handleFileSelection);
+  els["image-files"].addEventListener("change", handleImageSelection);
+  els["image-theme-select"].addEventListener("change", applyImageThemeSelection);
   els["theme-select"].addEventListener("change", applyThemeSelection);
   updateCharCount();
   resetStatusBoard();
   state.selectedThemeSlug = els["theme-select"]?.value || "";
   resetOutput();
   syncThemeState(currentTheme(), { autofillTitle: false });
-  setupDropzone();
+  setupDropzone(els.documentUploadCard, els["notes-file"], handleFileSelection);
+  setupDropzone(els.imageUploadCard, els["image-files"], handleImageSelection, { multiple: true });
+  setUploadMode("document");
 }
 
 window.showPage = showPage;
+window.showResetPassword = showResetPassword;
 window.doSignup = doSignup;
 window.doLogin = doLogin;
+window.doPasswordReset = doPasswordReset;
 window.doLogout = doLogout;
+window.setUploadMode = setUploadMode;
 window.generateComic = generateComic;
 window.downloadComic = downloadComic;
 window.clearComposer = clearComposer;
@@ -1308,5 +1553,6 @@ onAuthStateChanged(auth, (user) => {
     showPage("pg-dash");
     setAuthMessage("login-msg", null, "");
     setAuthMessage("signup-msg", null, "");
+    setAuthMessage("reset-msg", null, "");
   }
 });

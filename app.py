@@ -18,7 +18,7 @@ UPLOAD_DIR = GENERATED_DIR / "uploads"
 JOB_DIR = GENERATED_DIR / "jobs"
 
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="")
-app.config["MAX_CONTENT_LENGTH"] = 75 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 120 * 1024 * 1024
 
 engine = CominoteEngine(BASE_DIR)
 job_manager = JobManager(JOB_DIR)
@@ -41,6 +41,19 @@ def _persist_upload(uploaded_file: FileStorage | None) -> dict[str, str] | None:
     }
 
 
+def _persist_uploads(field_name: str, *, max_files: int = 12) -> list[dict[str, str]]:
+    uploads = [file for file in request.files.getlist(field_name) if file and file.filename]
+    if len(uploads) > max_files:
+        raise ValidationError(f"Please upload {max_files} image files or fewer.")
+
+    persisted: list[dict[str, str]] = []
+    for uploaded_file in uploads:
+        meta = _persist_upload(uploaded_file)
+        if meta:
+            persisted.append(meta)
+    return persisted
+
+
 def _build_generation_payload() -> dict:
     upload_meta = _persist_upload(request.files.get("file"))
     return {
@@ -53,6 +66,18 @@ def _build_generation_payload() -> dict:
         "user_id": request.form.get("user_id", ""),
         "user_name": request.form.get("user_name", ""),
         "upload": upload_meta,
+    }
+
+
+def _build_image_generation_payload() -> dict:
+    return {
+        "title": (request.form.get("title") or "Cominote Image Comic").strip(),
+        "theme_slug": (request.form.get("theme_slug") or request.form.get("image_theme") or "").strip().lower(),
+        "image_theme": (request.form.get("image_theme") or "").strip(),
+        "text": request.form.get("text", ""),
+        "user_id": request.form.get("user_id", ""),
+        "user_name": request.form.get("user_name", ""),
+        "uploads": _persist_uploads("images", max_files=12),
     }
 
 
@@ -79,6 +104,25 @@ def _run_generation(job_id: str, payload: dict, progress) -> dict:
                 path.unlink(missing_ok=True)
 
 
+def _run_image_generation(job_id: str, payload: dict, progress) -> dict:
+    uploads = payload.get("uploads") or []
+    upload_paths = [Path(item["path"]) for item in uploads if item.get("path")]
+    try:
+        return engine.generate_from_images(
+            title=payload["title"],
+            theme_slug=payload.get("theme_slug", ""),
+            image_files=upload_paths,
+            text=payload.get("text", ""),
+            user_id=payload.get("user_id", ""),
+            user_name=payload.get("user_name", ""),
+            progress_callback=progress,
+        )
+    finally:
+        for path in upload_paths:
+            if path.exists():
+                path.unlink(missing_ok=True)
+
+
 def _handle_sync_generation(payload: dict):
     try:
         result = _run_generation("sync", payload, lambda *_args, **_kwargs: None)
@@ -92,6 +136,23 @@ def _handle_sync_generation(payload: dict):
         return jsonify(
             {
                 "error": "Cominote hit an unexpected processing issue. Please try again with a smaller file or retry the job.",
+            }
+        ), 500
+
+
+def _handle_sync_image_generation(payload: dict):
+    try:
+        result = _run_image_generation("sync", payload, lambda *_args, **_kwargs: None)
+        return jsonify(result)
+    except ValidationError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except DependencyError as exc:
+        return jsonify({"error": str(exc)}), 503
+    except Exception:
+        app.logger.exception("Unexpected error during image comic generation")
+        return jsonify(
+            {
+                "error": "Cominote could not convert those images into a comic. Please try smaller JPG or PNG files.",
             }
         ), 500
 
@@ -139,6 +200,42 @@ def generate():
     except Exception:
         app.logger.exception("Unexpected error while starting background generation")
         return jsonify({"error": "Could not start background comic generation."}), 500
+
+
+@app.post("/api/generate/images")
+@app.post("/api/upload-image")
+@app.post("/upload-image")
+def generate_images():
+    try:
+        payload = _build_image_generation_payload()
+    except ValidationError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    wants_async = (request.form.get("async") or request.args.get("async") or "").strip() in {"1", "true", "yes"}
+    if not wants_async:
+        return _handle_sync_image_generation(payload)
+
+    try:
+        job = job_manager.create_job(payload=payload, worker=_run_image_generation)
+        return (
+            jsonify(
+                {
+                    "job_id": job.job_id,
+                    "status": job.status,
+                    "progress": job.progress,
+                    "stage": job.stage,
+                    "message": job.message,
+                }
+            ),
+            202,
+        )
+    except ValidationError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except DependencyError as exc:
+        return jsonify({"error": str(exc)}), 503
+    except Exception:
+        app.logger.exception("Unexpected error while starting background image generation")
+        return jsonify({"error": "Could not start image comic generation."}), 500
 
 
 @app.get("/api/jobs/<job_id>")
